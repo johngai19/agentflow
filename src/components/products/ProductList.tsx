@@ -60,6 +60,9 @@ export function ProductList() {
   const [error, setError] = React.useState<string | null>(null);
   const token = useAuthStore((state) => state.token);
   const router = useRouter();
+  const [pingResult, setPingResult] = React.useState<{ message: string; user: string } | null>(null);
+  const [pingError, setPingError] = React.useState<string | null>(null);
+  const [isPinging, setIsPinging] = React.useState(false);
 
   React.useEffect(() => {
     if (!token) {
@@ -82,7 +85,7 @@ export function ProductList() {
 
         // Example of how a real API call would look (currently commented out):
         /*
-        const response = await fetch("http://localhost:8080/api/v1/products", { // Ensure this is the correct endpoint
+        const response = await fetch("/api/products", { // Ensure this is the correct endpoint
           headers: {
             "Authorization": `Bearer ${token}`,
           },
@@ -106,6 +109,28 @@ export function ProductList() {
     fetchProducts();
   }, [token, router]);
 
+  const handlePing = async () => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setPingError(null);
+    setIsPinging(true);
+    try {
+      const res = await fetch("/api/ping", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+      setPingResult(data);
+    } catch (err: any) {
+      setPingError(err.message);
+      setPingResult(null);
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
   if (isLoading) {
     return <p className="text-center py-8">Loading products...</p>;
   }
@@ -121,6 +146,25 @@ export function ProductList() {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Product List</h1>
+      <div className="mb-6">
+        <button
+          onClick={handlePing}
+          disabled={isPinging}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isPinging ? "Pinging..." : "Ping Server"}
+        </button>
+        {pingResult && (
+          <div className="mt-3 p-3 bg-green-100 text-green-800 rounded">
+            Response: {pingResult.message}, User: {pingResult.user}
+          </div>
+        )}
+        {pingError && (
+          <div className="mt-3 p-3 bg-red-100 text-red-800 rounded">
+            Ping Error: {pingError}
+          </div>
+        )}
+      </div>
       <Table>
         <TableCaption>A list of available products. (Currently using mock data)</TableCaption>
         <TableHeader>

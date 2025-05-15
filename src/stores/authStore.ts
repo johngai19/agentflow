@@ -22,15 +22,13 @@ const useAuthStore = create<AuthState>()(
       error: null,
       setToken: (token) => set({ token }),
       setUser: (user) => set({ user }),
-      login: async (values: {username: string, password: string}) => {
+      login: async (values: { username: string; password: string }) => {
         set({ isLoading: true, error: null });
         try {
-          // Use absolute URL for the backend API
-          const response = await fetch('http://localhost:8080/api/v1/auth/login', {
+          // now calls your Next.js proxy in dev, and a same-origin endpoint in prod
+          const response = await fetch('/api/auth/login', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(values),
           });
           const data = await response.json();
@@ -40,7 +38,7 @@ const useAuthStore = create<AuthState>()(
           set({ token: data.token, user: { username: values.username }, isLoading: false });
         } catch (error: any) {
           set({ error: error.message, isLoading: false, token: null, user: null });
-          throw error; // Re-throw to be caught by the form handler
+          throw error;
         }
       },
       logout: () => {
