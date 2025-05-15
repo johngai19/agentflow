@@ -1,55 +1,50 @@
-# Nextjs Shadcn Frontend
+# NextjsKickstart
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+This frontend leverages the [shadcn/ui](https://github.com/shadcn/ui) component library for styling and UI primitives.
+
 ## Prerequisites
 
-- Node.js v14 or later
-- npm, yarn, or pnpm
+- Node.js v14 or later  
+- npm, yarn, or pnpm  
+- Go 1.18+ (for the backend service)
 
 ## Installation
 
-1. Clone the repo (if you haven't already):
+1. Clone the frontend repo (if you haven't already):
 
    ```bash
-   git clone <your-repo-url>
+   git clone <your-frontend-repo-url>
    cd nextjs-shadcn-frontend-src
+   ```
+
+2. Clone and start the Go backend:
+
+   ```bash
+   git clone https://github.com/johngai19/GoGinKickstart.git ../GoGinKickstart
+   cd ../GoGinKickstart
+   go run main.go
+   ```
+
+   By default the backend will listen on http://localhost:8080.
+
+3. Go back to the frontend folder and install dependencies:
+
+   ```bash
+   cd ../nextjs-shadcn-frontend-src
+   pnpm install
    ```
 
 ## Getting Started
 
-First, install the dependencies (pnpm is recommended), if you haven't already:
+Make sure the Go backend is running on port 8080, then start the Next.js dev server:
 
 ```bash
-npm install -g pnpm
-```
-
-Then, install the dependencies:
-
-
-```bash
-npm install
-# or
-yarn
-# or
-pnpm install
-```
-
-Then, run the development server:
-
-```bash
-npx next dev --turbopack
-# or
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser. The frontend will proxy `/api/*` calls to the Go backend at `http://localhost:8080/api/v1/...`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
