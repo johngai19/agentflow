@@ -1,0 +1,8 @@
+{
+  "name": "@agent-starters/kagent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "vitest run", "validate": "node --input-type=module < validate-manifests.mjs" },
+  "devDependencies": { "@types/node": "^20", "typescript": "^5.8.3", "vitest": "^3.1.1", "js-yaml": "^4.1.0" }
+}
