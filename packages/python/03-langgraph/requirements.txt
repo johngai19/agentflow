@@ -1,0 +1,5 @@
+langgraph>=0.1
+langchain>=0.2
+pytest>=8.0
+pytest-asyncio>=0.23
+pytest-cov>=4.0

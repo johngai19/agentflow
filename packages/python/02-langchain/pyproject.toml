@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "langchain-starter"
+version = "0.1.0"
+description = "LangChain Agent Starter - Chain-based AI composition"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=0.2",
+    "langchain-openai>=0.1",
+    "langchain-community>=0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src"]

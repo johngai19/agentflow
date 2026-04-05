@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "llamaindex-starter"
+version = "0.1.0"
+description = "LlamaIndex Agent Starter - RAG and data-augmented agents"
+requires-python = ">=3.11"
+dependencies = [
+    "llama-index>=0.10",
+    "llama-index-core>=0.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src"]

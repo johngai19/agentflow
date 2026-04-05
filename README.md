@@ -1,66 +1,76 @@
-# NextjsKickstart
+# Agent Frameworks Starter Collection
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+A monorepo containing TDD (Test-Driven Development) starter examples for the top 20 AI agent frameworks.
 
-This frontend leverages the [shadcn/ui](https://github.com/shadcn/ui) component library for styling and UI primitives.
+## Structure
 
-## Prerequisites
-
-- Node.js v14 or later  
-- npm, yarn, or pnpm  
-- Go 1.18+ (for the backend service)
-
-## Installation
-
-1. Clone the frontend repo (if you haven't already):
-
-   ```bash
-   git clone <your-frontend-repo-url>
-   cd nextjs-shadcn-frontend-src
-   ```
-
-2. Clone and start the Go backend:
-
-   ```bash
-   git clone https://github.com/johngai19/GoGinKickstart.git ../GoGinKickstart
-   cd ../GoGinKickstart
-   go run main.go
-   ```
-
-   By default the backend will listen on http://localhost:8080.
-
-3. Go back to the frontend folder and install dependencies:
-
-   ```bash
-   cd ../nextjs-shadcn-frontend-src
-   pnpm install
-   ```
+```
+agent-frameworks-starter/
+├── web/                          # Next.js frontend app (shadcn/ui)
+├── packages/
+│   ├── typescript/               # TypeScript agent framework starters
+│   ├── python/                   # Python agent framework starters
+│   └── orchestration/            # Multi-agent orchestration examples
+└── pnpm-workspace.yaml
+```
 
 ## Getting Started
 
-Make sure the Go backend is running on port 8080, then start the Next.js dev server:
-
 ```bash
+# Install dependencies
+pnpm install
+
+# Run the web app
 pnpm dev
+
+# Run all TypeScript tests
+pnpm test:ts
+
+# Run the web app tests
+pnpm test:web
+
+# Run Python tests (from individual package dirs)
+pnpm test:python
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. The frontend will proxy `/api/*` calls to the Go backend at `http://localhost:8080/api/v1/...`.
+## Agent Frameworks
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| # | Framework | Language | Package Path | Status |
+|---|-----------|----------|--------------|--------|
+| 1 | [LangChain](https://github.com/langchain-ai/langchainjs) | TypeScript | `packages/typescript/langchain` | Planned |
+| 2 | [LangGraph](https://github.com/langchain-ai/langgraphjs) | TypeScript | `packages/typescript/langgraph` | Planned |
+| 3 | [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) | Python | `packages/python/openai-agents` | Planned |
+| 4 | [Anthropic Claude Agent SDK](https://github.com/anthropics/anthropic-sdk-python) | TypeScript/Python | `packages/typescript/claude-agent` | Planned |
+| 5 | [AutoGen](https://github.com/microsoft/autogen) | Python | `packages/python/autogen` | Planned |
+| 6 | [CrewAI](https://github.com/crewAIInc/crewAI) | Python | `packages/python/crewai` | Planned |
+| 7 | [Semantic Kernel](https://github.com/microsoft/semantic-kernel) | TypeScript | `packages/typescript/semantic-kernel` | Planned |
+| 8 | [Mastra](https://github.com/mastra-ai/mastra) | TypeScript | `packages/typescript/mastra` | Planned |
+| 9 | [Vercel AI SDK](https://github.com/vercel/ai) | TypeScript | `packages/typescript/vercel-ai` | Planned |
+| 10 | [Haystack](https://github.com/deepset-ai/haystack) | Python | `packages/python/haystack` | Planned |
+| 11 | [DSPy](https://github.com/stanfordnlp/dspy) | Python | `packages/python/dspy` | Planned |
+| 12 | [LlamaIndex](https://github.com/run-llama/llama_index) | Python | `packages/python/llamaindex` | Planned |
+| 13 | [Phidata (Agno)](https://github.com/agno-agi/agno) | Python | `packages/python/agno` | Planned |
+| 14 | [PydanticAI](https://github.com/pydantic/pydantic-ai) | Python | `packages/python/pydantic-ai` | Planned |
+| 15 | [Smolagents](https://github.com/huggingface/smolagents) | Python | `packages/python/smolagents` | Planned |
+| 16 | [BeeAI](https://github.com/i-am-bee/bee-agent-framework) | TypeScript | `packages/typescript/beeai` | Planned |
+| 17 | [Agentkit (Coinbase)](https://github.com/coinbase/agentkit) | TypeScript | `packages/typescript/agentkit` | Planned |
+| 18 | [Camel-AI](https://github.com/camel-ai/camel) | Python | `packages/python/camel-ai` | Planned |
+| 19 | [Letta (MemGPT)](https://github.com/letta-ai/letta) | Python | `packages/python/letta` | Planned |
+| 20 | [AG2 (AutoGen fork)](https://github.com/ag2ai/ag2) | Python | `packages/python/ag2` | Planned |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Web App
 
-## Learn More
+The `web/` package is a Next.js 15 app with:
+- **shadcn/ui** component library
+- **Tailwind CSS v4**
+- **Zustand** for state management
+- **React Hook Form + Zod** for forms and validation
+- **Vitest** for testing
+- **TypeScript**
 
-To learn more about Next.js, take a look at the following resources:
+## Contributing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each framework starter lives in its own package directory and follows TDD principles:
+1. Tests are written first
+2. Implementation follows
+3. Each package is self-contained with its own dependencies
