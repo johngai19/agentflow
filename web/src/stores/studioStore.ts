@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
+import { runAgentInZone } from '@/lib/agentWorker'
 
 export interface ToolEvent {
   name: string
@@ -124,7 +125,7 @@ export const useStudioStore = create<StudioState>()(
   setSidebarLayout: (layout) => set({ sidebarLayout: layout }),
 
   moveAgentToZone: (agentId, zoneId) => {
-    const { agents, addNotification, simulateWork } = get()
+    const { agents, addNotification, updateAgentStatus, updateAgentProgress, addMessage } = get()
     const agent = agents.find(a => a.id === agentId)
     const prevZone = agent?.currentZone
     if (!agent || prevZone === zoneId) return
@@ -146,7 +147,69 @@ export const useStudioStore = create<StudioState>()(
         message: `${agent.name} 已进入「${zone.name}」，准备开始工作`,
         type: 'info',
       })
-      setTimeout(() => simulateWork(agentId, zoneId), 1500)
+
+      // Mark start time
+      set(state => ({
+        agents: state.agents.map(a =>
+          a.id === agentId ? { ...a, startTime: Date.now() } : a
+        )
+      }))
+
+      // Trigger real Claude execution after a short arrival delay
+      setTimeout(() => {
+        const current = get().agents.find(a => a.id === agentId)
+        if (!current || current.currentZone !== zoneId) return
+
+        runAgentInZone(agent, zone, {
+          onStatus: (task) => updateAgentStatus(agentId, 'working', task),
+          onProgress: (pct) => updateAgentProgress(agentId, pct),
+          onComplete: (summary) => {
+            const c = get().agents.find(a => a.id === agentId)
+            if (!c || c.currentZone !== zoneId) return
+            updateAgentStatus(agentId, 'reporting', '汇报中...')
+            set(state => ({
+              agents: state.agents.map(a =>
+                a.id === agentId ? { ...a, completedTasks: a.completedTasks + 1 } : a
+              )
+            }))
+            addNotification({
+              agentId,
+              agentName: agent.name,
+              agentEmoji: agent.emoji,
+              message: `✅ ${agent.name}：${summary}`,
+              type: 'success',
+            })
+            // After reporting, return to assigned/idle in zone
+            setTimeout(() => {
+              const c2 = get().agents.find(a => a.id === agentId)
+              if (c2?.currentZone === zoneId) {
+                updateAgentStatus(agentId, 'assigned', '等待下一轮...')
+                set(state => ({ agents: state.agents.map(a => a.id === agentId ? { ...a, progress: undefined } : a) }))
+                // Auto-repeat in cron zone
+                if (zoneId === 'cron') {
+                  setTimeout(() => get().moveAgentToZone(agentId, zoneId), 12000)
+                }
+              }
+            }, 3000)
+          },
+          onError: () => {
+            updateAgentStatus(agentId, 'error', '执行出错')
+            setTimeout(() => {
+              const c = get().agents.find(a => a.id === agentId)
+              if (c?.currentZone === zoneId) updateAgentStatus(agentId, 'assigned', '等待重试...')
+            }, 4000)
+          },
+          onMessage: (role, content, toolEvents) => {
+            addMessage(agentId, {
+              id: Math.random().toString(36).slice(2),
+              role,
+              content,
+              timestamp: Date.now(),
+              toolEvents,
+            })
+          },
+        })
+      }, 1500)
     } else {
       addNotification({
         agentId,
