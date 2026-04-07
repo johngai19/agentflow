@@ -2,6 +2,7 @@
 
 import { StatsBar } from '@/components/agents/StatsBar'
 import { AgentGrid } from '@/components/agents/AgentGrid'
+import { ActivityFeed } from '@/components/agents/ActivityFeed'
 
 export default function DashboardPage() {
   return (
@@ -13,7 +14,14 @@ export default function DashboardPage() {
         </p>
       </div>
       <StatsBar />
-      <AgentGrid />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2">
+          <AgentGrid />
+        </div>
+        <div>
+          <ActivityFeed limit={12} />
+        </div>
+      </div>
     </div>
   )
 }

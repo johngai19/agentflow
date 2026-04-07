@@ -31,11 +31,11 @@ export interface Project {
 }
 
 export const STATUS_CONFIG: Record<AgentStatus, { label: string; color: string; dotClass: string }> = {
-  running:   { label: 'Running',   color: 'text-green-600',  dotClass: 'bg-green-500' },
-  idle:      { label: 'Idle',      color: 'text-yellow-600', dotClass: 'bg-yellow-500' },
-  completed: { label: 'Completed', color: 'text-blue-600',   dotClass: 'bg-blue-500' },
-  error:     { label: 'Error',     color: 'text-red-600',    dotClass: 'bg-red-500' },
-  blocked:   { label: 'Blocked',   color: 'text-orange-600', dotClass: 'bg-orange-500' },
+  running:   { label: 'Running',   color: 'text-green-600 dark:text-green-400',  dotClass: 'bg-green-500' },
+  idle:      { label: 'Idle',      color: 'text-yellow-600 dark:text-yellow-400', dotClass: 'bg-yellow-500' },
+  completed: { label: 'Completed', color: 'text-blue-600 dark:text-blue-400',   dotClass: 'bg-blue-500' },
+  error:     { label: 'Error',     color: 'text-red-600 dark:text-red-400',    dotClass: 'bg-red-500' },
+  blocked:   { label: 'Blocked',   color: 'text-orange-600 dark:text-orange-400', dotClass: 'bg-orange-500' },
 }
 
 export const TYPE_CONFIG: Record<AgentType, { label: string; emoji: string }> = {

@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import useAuthStore from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -11,27 +9,11 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MenuIcon, LayoutDashboard, FolderKanban, Bot, Settings, LogIn, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { MenuIcon, LayoutDashboard, FolderKanban, Bot, Settings } from "lucide-react";
 
 export function TopNavbar() {
-  const { token, user, logout } = useAuthStore();
-  const router = useRouter();
-
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
-
   const navLinks = [
     { href: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
     { href: "/projects", label: "Projects", icon: <FolderKanban className="h-4 w-4" /> },
@@ -44,7 +26,6 @@ export function TopNavbar() {
       <div className="container flex h-14 items-center">
         <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            {/* <Icons.logo className="h-6 w-6" /> */}
             <span className="font-bold sm:inline-block">
               Agent Town
             </span>
@@ -94,48 +75,10 @@ export function TopNavbar() {
           </Sheet>
         </div>
 
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          {token && user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    {/* Placeholder for user image - replace with actual image if available */}
-                    {/* <AvatarImage src={user.imageUrl || "/avatars/01.png"} alt={user.username} /> */}
-                    <AvatarFallback>{user.username?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.username}</p>
-                    {/* <p className="text-xs leading-none text-muted-foreground">
-                      {user.email} // Assuming email is part of user object
-                    </p> */}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {/* <DropdownMenuItem>
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem> */}
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button asChild>
-              <Link href="/login">
-                <LogIn className="mr-2 h-4 w-4" /> Login
-              </Link>
-            </Button>
-          )}
+        <div className="flex flex-1 items-center justify-end space-x-2">
+          <ThemeToggle />
         </div>
       </div>
     </header>
   );
 }
-

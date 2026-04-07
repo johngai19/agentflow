@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TopNavbar } from "@/components/layout/TopNavbar";
-import { Toaster } from "@/components/ui/sonner"; // Assuming sonner was added to ui components by shadcn cli
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -25,13 +26,19 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <TopNavbar />
-        <main className="container mx-auto px-4 py-8 flex-grow">
-          {children}
-        </main>
-        <Toaster richColors position="top-right" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TopNavbar />
+          <main className="container mx-auto px-4 py-8 flex-grow">
+            {children}
+          </main>
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-
