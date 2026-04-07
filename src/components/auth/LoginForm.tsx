@@ -10,14 +10,13 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import useAuthStore from "@/stores/authStore";
 import { Toaster, toast } from "sonner";
 
@@ -55,7 +54,7 @@ export function LoginForm() {
       // For now, let's redirect to a placeholder page or home
       // The actual redirect will depend on the protected route setup
       setTimeout(() => router.push("/"), 1000); 
-    } catch (err: any) {
+    } catch {
       // Error is already handled by the store and displayed by the useEffect toast
       // console.error("Login failed in component:", err.message);
     }

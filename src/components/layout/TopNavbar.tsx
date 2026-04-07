@@ -19,9 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MenuIcon, Home, Package, LogIn, UserCircle, LogOut } from "lucide-react"; // Assuming lucide-react is installed or will be
+import { MenuIcon, LayoutDashboard, FolderKanban, Bot, Settings, LogIn, LogOut } from "lucide-react";
 
 export function TopNavbar() {
   const { token, user, logout } = useAuthStore();
@@ -33,8 +33,10 @@ export function TopNavbar() {
   };
 
   const navLinks = [
-    { href: "/", label: "Home", icon: <Home className="h-4 w-4" /> },
-    { href: "/products", label: "Products", icon: <Package className="h-4 w-4" /> },
+    { href: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { href: "/projects", label: "Projects", icon: <FolderKanban className="h-4 w-4" /> },
+    { href: "/agents", label: "Agents", icon: <Bot className="h-4 w-4" /> },
+    { href: "/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
   ];
 
   return (
@@ -44,7 +46,7 @@ export function TopNavbar() {
           <Link href="/" className="mr-6 flex items-center space-x-2">
             {/* <Icons.logo className="h-6 w-6" /> */}
             <span className="font-bold sm:inline-block">
-              FrontendApp
+              Agent Town
             </span>
           </Link>
           <NavigationMenu>
@@ -74,7 +76,7 @@ export function TopNavbar() {
             </SheetTrigger>
             <SheetContent side="left">
               <Link href="/" className="flex items-center space-x-2 mb-6">
-                 <span className="font-bold">FrontendApp</span>
+                 <span className="font-bold">Agent Town</span>
               </Link>
               <nav className="flex flex-col space-y-2">
                 {navLinks.map((link) => (

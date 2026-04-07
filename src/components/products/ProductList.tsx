@@ -98,8 +98,8 @@ export function ProductList() {
         // Assuming the backend returns { products: Product[] } or similar
         setProducts(data.products || data || []); 
         */
-      } catch (err: any) {
-        setError(err.message || "An unexpected error occurred while fetching products.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred while fetching products.");
         setProducts([]);
       } finally {
         setIsLoading(false);
@@ -123,8 +123,8 @@ export function ProductList() {
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
       const data = await res.json();
       setPingResult(data);
-    } catch (err: any) {
-      setPingError(err.message);
+    } catch (err: unknown) {
+      setPingError(err instanceof Error ? err.message : "Unknown error");
       setPingResult(null);
     } finally {
       setIsPinging(false);

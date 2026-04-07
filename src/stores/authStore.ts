@@ -15,7 +15,7 @@ interface AuthState {
 
 const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       token: null,
       user: null,
       isLoading: false,
@@ -36,8 +36,8 @@ const useAuthStore = create<AuthState>()(
             throw new Error(data.error || 'Login failed');
           }
           set({ token: data.token, user: { username: values.username }, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false, token: null, user: null });
+        } catch (error: unknown) {
+          set({ error: error instanceof Error ? error.message : "Login failed", isLoading: false, token: null, user: null });
           throw error;
         }
       },
