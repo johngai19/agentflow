@@ -1,0 +1,17 @@
+{
+  "name": "@agent-starters/openai-agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1",
+    "tsx": "^4.7.0"
+  }
+}

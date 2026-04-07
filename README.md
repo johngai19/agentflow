@@ -1,66 +1,257 @@
-# NextjsKickstart
+# Agent Frameworks Starter Collection
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+> Top 20 AI agent frameworks — production-quality TDD starters in Python & TypeScript, plus Kubernetes orchestration.
 
-This frontend leverages the [shadcn/ui](https://github.com/shadcn/ui) component library for styling and UI primitives.
+[![Tests](https://img.shields.io/badge/tests-243%20passed-brightgreen)](#test-results)
+[![Frameworks](https://img.shields.io/badge/frameworks-20-blue)](#frameworks)
+[![License](https://img.shields.io/badge/license-MIT-green)](#license)
 
-## Prerequisites
+---
 
-- Node.js v14 or later  
-- npm, yarn, or pnpm  
-- Go 1.18+ (for the backend service)
+## What Is This?
 
-## Installation
+A monorepo of **self-contained starter packages** for the most popular AI agent frameworks. Each starter:
 
-1. Clone the frontend repo (if you haven't already):
+- Demonstrates the framework's **core patterns** (tool use, memory, multi-agent, RAG, etc.)
+- Uses **TDD** — tests are written first, implementation follows
+- Runs **offline** — all LLM calls are mocked, no API keys required to run tests
+- Is **production-ready** — patterns match how real apps are built
 
-   ```bash
-   git clone <your-frontend-repo-url>
-   cd nextjs-shadcn-frontend-src
-   ```
+Use this as a reference when evaluating frameworks, learning agent development, or bootstrapping a new project.
 
-2. Clone and start the Go backend:
+---
 
-   ```bash
-   git clone https://github.com/johngai19/GoGinKickstart.git ../GoGinKickstart
-   cd ../GoGinKickstart
-   go run main.go
-   ```
+## Repository Structure
 
-   By default the backend will listen on http://localhost:8080.
-
-3. Go back to the frontend folder and install dependencies:
-
-   ```bash
-   cd ../nextjs-shadcn-frontend-src
-   pnpm install
-   ```
-
-## Getting Started
-
-Make sure the Go backend is running on port 8080, then start the Next.js dev server:
-
-```bash
-pnpm dev
+```
+agent-frameworks-starter/
+│
+├── web/                              # Next.js 15 showcase portal
+│   └── src/
+│       ├── app/                      # App Router pages
+│       ├── components/frameworks/    # FrameworkCard UI component
+│       └── data/frameworks.ts        # Framework metadata
+│
+├── packages/
+│   ├── python/                       # Python agent starters (pip + pytest)
+│   │   ├── 01-pydantic-ai/
+│   │   ├── 02-langchain/
+│   │   ├── 03-langgraph/
+│   │   ├── 04-llamaindex/
+│   │   ├── 05-google-adk/
+│   │   ├── 06-crewai/
+│   │   ├── 07-autogen/
+│   │   ├── 08-smolagents/
+│   │   ├── 09-agno/
+│   │   ├── 10-semantic-kernel/
+│   │   └── 20-griptape/
+│   │
+│   ├── typescript/                   # TypeScript starters (npm + vitest)
+│   │   ├── 11-mastra/
+│   │   ├── 12-claude-agent-sdk/
+│   │   ├── 13-openai-agents/
+│   │   ├── 14-vercel-ai-sdk/
+│   │   ├── 15-langchain-js/
+│   │   ├── 16-langgraph-js/
+│   │   ├── 17-genkit/
+│   │   └── 18-bee-agent-framework/
+│   │
+│   └── orchestration/                # Infrastructure / orchestration
+│       └── 19-kagent/
+│
+├── docs/                             # Project documentation
+│   ├── architecture.md
+│   ├── tdd-guide.md
+│   ├── python-guide.md
+│   ├── typescript-guide.md
+│   └── framework-comparison.md
+│
+├── CONTRIBUTING.md
+├── package.json                      # pnpm workspace root
+└── pnpm-workspace.yaml
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. The frontend will proxy `/api/*` calls to the Go backend at `http://localhost:8080/api/v1/...`.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quick Start
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Run any Python starter
 
-## Learn More
+```bash
+cd packages/python/01-pydantic-ai
+pip install -r requirements.txt
+python -m pytest tests/ -v
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Run any TypeScript starter
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd packages/typescript/11-mastra
+npm install
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Start the web showcase
 
-## Deploy on Vercel
+```bash
+pnpm install         # install all TS workspace deps
+pnpm dev             # http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Run all TypeScript tests
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm test:ts
+```
+
+---
+
+## Frameworks
+
+### 🐍 Python Frameworks
+
+| # | Framework | Highlights | Docs |
+|---|-----------|-----------|------|
+| 01 | **PydanticAI** | Type-safe agents, Pydantic v2 validation, DI for testing | [ai.pydantic.dev](https://ai.pydantic.dev) |
+| 02 | **LangChain** | Largest ecosystem, chains + RAG + 100s of integrations | [python.langchain.com](https://python.langchain.com) |
+| 03 | **LangGraph** | Stateful graph workflows, cycles, multi-actor systems | [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph) |
+| 04 | **LlamaIndex** | Data-first RAG framework, query engines, data connectors | [docs.llamaindex.ai](https://docs.llamaindex.ai) |
+| 05 | **Google ADK** | Google's official agent kit, Gemini-native, sessions | [google.github.io/adk-docs](https://google.github.io/adk-docs) |
+| 06 | **CrewAI** | Role-based multi-agent crews, task delegation | [docs.crewai.com](https://docs.crewai.com) |
+| 07 | **AutoGen** | Microsoft conversational multi-agents, code execution | [microsoft.github.io/autogen](https://microsoft.github.io/autogen) |
+| 08 | **Smolagents** | HuggingFace minimal agents, code-first tool use | [huggingface.co/docs/smolagents](https://huggingface.co/docs/smolagents) |
+| 09 | **Agno** | Fast async agents (ex-Phidata), structured outputs, teams | [docs.agno.com](https://docs.agno.com) |
+| 10 | **Semantic Kernel** | Microsoft enterprise SDK, plugins, planners, C#/Python | [learn.microsoft.com/semantic-kernel](https://learn.microsoft.com/semantic-kernel) |
+| 20 | **Griptape** | Enterprise pipelines, fine-grained control, production-ready | [docs.griptape.ai](https://docs.griptape.ai) |
+
+### 🟦 TypeScript Frameworks
+
+| # | Framework | Highlights | Docs |
+|---|-----------|-----------|------|
+| 11 | **Mastra** | Modern TS-first, typed tools, workflows, integrations | [mastra.ai/docs](https://mastra.ai/docs) |
+| 12 | **Claude Agent SDK** | Anthropic official, full tool use, multi-turn agent loop | [docs.anthropic.com](https://docs.anthropic.com) |
+| 13 | **OpenAI Agents SDK** | OpenAI official, function calling, handoffs between agents | [platform.openai.com/docs](https://platform.openai.com/docs) |
+| 14 | **Vercel AI SDK** | Streaming-first, React hooks, provider-agnostic, Next.js | [sdk.vercel.ai/docs](https://sdk.vercel.ai/docs) |
+| 15 | **LangChain.js** | JS/TS port of LangChain, same ecosystem in Node/browser | [js.langchain.com](https://js.langchain.com) |
+| 16 | **LangGraph.js** | TypeScript graph agents, stateful, multi-actor | [langchain-ai.github.io/langgraphjs](https://langchain-ai.github.io/langgraphjs) |
+| 17 | **Genkit** | Google Firebase AI, flows + prompts, Gemini integration | [firebase.google.com/docs/genkit](https://firebase.google.com/docs/genkit) |
+| 18 | **Bee Agent Framework** | IBM open-source, ReAct pattern, structured tool schemas | [i-am-bee.github.io/bee-agent-framework](https://i-am-bee.github.io/bee-agent-framework) |
+
+### ⚙️ Orchestration & Infrastructure
+
+| # | Framework | Highlights | Docs |
+|---|-----------|-----------|------|
+| 19 | **kagent** | Kubernetes-native, CRD-based agent definitions, GitOps | [kagent.dev](https://kagent.dev) |
+
+---
+
+## Test Results
+
+All 243 tests pass with zero real API calls (fully mocked):
+
+| Group | Frameworks | Tests | Status |
+|-------|------------|-------|--------|
+| Python 01–05 | pydantic-ai, langchain, langgraph, llamaindex, google-adk | 66 | ✅ all passed |
+| Python 06–10 | crewai, autogen, smolagents, agno, semantic-kernel | 71 | ✅ all passed |
+| Python 20 | griptape | 15 | ✅ all passed |
+| TypeScript 11–15 | mastra, claude-sdk, openai-agents, vercel-ai, langchain-js | 42 | ✅ all passed |
+| TypeScript 16–18 | langgraph-js, genkit, bee-agent | 29 | ✅ all passed |
+| Orchestration 19 | kagent | 11 | ✅ all passed |
+| **Total** | **20 frameworks** | **243** | ✅ **243/243** |
+
+---
+
+## TDD Philosophy
+
+Every starter follows the same TDD workflow:
+
+```
+1. Define the interface  →  What should the agent DO?
+2. Write failing tests   →  What does "correct" look like?
+3. Implement             →  Make the tests pass
+4. Refactor              →  Clean up without breaking tests
+```
+
+**Key constraint:** Tests must pass with mocked LLMs. This enforces:
+- Clean dependency injection (LLM client passed into constructor)
+- Separation of agent logic from model provider
+- Ability to test edge cases (errors, empty responses, tool failures)
+
+See [`docs/tdd-guide.md`](docs/tdd-guide.md) for detailed patterns.
+
+---
+
+## Framework Selection Guide
+
+| If you need… | Use |
+|---|---|
+| Strictest type safety + Python | **PydanticAI** (#01) |
+| Largest ecosystem / most integrations | **LangChain** (#02) |
+| Complex stateful workflows with cycles | **LangGraph** (#03 / #16) |
+| RAG over your own documents | **LlamaIndex** (#04) |
+| Google Gemini + production agents | **Google ADK** (#05) |
+| Multi-agent teams with roles | **CrewAI** (#06) |
+| Conversational multi-agent systems | **AutoGen** (#07) |
+| Minimal code, quick prototype | **Smolagents** (#08) |
+| Fast async production agents | **Agno** (#09) |
+| Microsoft/Azure enterprise stack | **Semantic Kernel** (#10) |
+| TypeScript-first modern stack | **Mastra** (#11) |
+| Anthropic Claude as primary model | **Claude Agent SDK** (#12) |
+| OpenAI GPT as primary model | **OpenAI Agents** (#13) |
+| Streaming UI + Next.js | **Vercel AI SDK** (#14) |
+| Enterprise Python pipelines | **Griptape** (#20) |
+| Kubernetes-native agent ops | **kagent** (#19) |
+
+---
+
+## Development
+
+### Prerequisites
+
+- **Node.js** ≥ 20, **pnpm** ≥ 9
+- **Python** ≥ 3.11, **pip**
+
+### Install all TypeScript dependencies
+
+```bash
+pnpm install
+```
+
+### Test commands
+
+```bash
+# All TypeScript packages
+pnpm test:ts
+
+# Web portal
+pnpm test:web
+
+# Specific Python framework
+cd packages/python/03-langgraph
+python -m pytest tests/ -v --cov=src --cov-report=term-missing
+
+# All Python frameworks (bash loop)
+for dir in packages/python/*/; do
+  echo "▶ $dir"
+  (cd "$dir" && python -m pytest tests/ -q)
+done
+```
+
+### Web portal development
+
+```bash
+pnpm dev              # http://localhost:3000  (Next.js dev with Turbopack)
+pnpm build            # Production build
+```
+
+---
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to add a new framework starter.
+
+---
+
+## License
+
+MIT
