@@ -26,6 +26,8 @@ export default function StudioPage() {
   const agents = useStudioStore(s => s.agents)
   const zones = useStudioStore(s => s.zones)
   const moveAgentToZone = useStudioStore(s => s.moveAgentToZone)
+  const demoMode = useStudioStore(s => s.demoMode)
+  const toggleDemoMode = useStudioStore(s => s.toggleDemoMode)
 
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null)
   const [showWorkflow, setShowWorkflow] = useState(true)
@@ -83,6 +85,18 @@ export default function StudioPage() {
             <div className="text-xs text-white/70 hidden sm:block">
               ✓ <span className="text-green-400 font-semibold">{totalCompleted}</span> 完成
             </div>
+            {/* Demo mode toggle */}
+            <button
+              onClick={toggleDemoMode}
+              title={demoMode ? '当前：演示模式（无需API密钥）\n点击切换到真实模式' : '当前：真实模式（使用Anthropic API）\n点击切换到演示模式'}
+              className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                demoMode
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-green-500/20 border-green-500/40 text-green-300'
+              }`}
+            >
+              {demoMode ? '🧪 演示' : '⚡ 真实'}
+            </button>
             {/* Workflow toggle */}
             <button
               onClick={() => setShowWorkflow(v => !v)}

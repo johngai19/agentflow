@@ -39,8 +39,9 @@ export async function runAgentInZone(
   zone: Zone,
   callbacks: WorkCallbacks,
   signal?: AbortSignal,
+  demoMode?: boolean,
 ): Promise<void> {
-  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+  const isDemoMode = demoMode ?? process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
   if (isDemoMode) {
     // Demo mode: simulate with realistic fake output

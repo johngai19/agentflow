@@ -81,6 +81,8 @@ interface StudioState {
   providerIcon: string
   // User-editable workflow connections (source of truth for WorkflowEdges)
   workflowLinks: WorkflowLink[]
+  // Demo mode: use fake responses instead of real API calls
+  demoMode: boolean
 
   // Actions
   selectAgent: (id: string | null) => void
@@ -101,6 +103,7 @@ interface StudioState {
   /** Workflow link editor actions */
   addWorkflowLink: (fromId: string, toId: string) => void
   removeWorkflowLink: (fromId: string, toId: string) => void
+  toggleDemoMode: () => void
 }
 
 export const useStudioStore = create<StudioState>()(
@@ -118,6 +121,7 @@ export const useStudioStore = create<StudioState>()(
   providerName: 'Mock (Local)',
   providerIcon: '🧪',
   workflowLinks: buildInitialLinks(),
+  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === 'true',
 
   selectAgent: (id) => set({ selectedAgentId: id, isPanelOpen: !!id }),
   closePanel: () => set({ selectedAgentId: null, isPanelOpen: false }),
@@ -208,7 +212,7 @@ export const useStudioStore = create<StudioState>()(
               toolEvents,
             })
           },
-        })
+        }, undefined, get().demoMode)
       }, 1500)
     } else {
       addNotification({
@@ -421,6 +425,10 @@ export const useStudioStore = create<StudioState>()(
       workflowLinks: state.workflowLinks.filter(l => !(l.fromId === fromId && l.toId === toId))
     }))
   },
+
+  toggleDemoMode: () => {
+    set(state => ({ demoMode: !state.demoMode }))
+  },
     }),
     {
       name: 'agent-studio-state',
@@ -434,6 +442,7 @@ export const useStudioStore = create<StudioState>()(
         ),
         panelMode: state.panelMode,
         sidebarLayout: state.sidebarLayout,
+        demoMode: state.demoMode,
         workflowLinks: state.workflowLinks,
         agents: state.agents.map(a => ({
           ...a,
