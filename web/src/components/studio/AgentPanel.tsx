@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useStudioStore, type ChatMessage } from '@/stores/studioStore'
 import { ZONES } from '@/data/studioData'
 import VoiceButton from './VoiceButton'
+import DispatchPanel from './DispatchPanel'
 
 // ── Markdown-lite renderer (bold + code blocks) ──
 function renderContent(text: string) {
@@ -40,6 +41,7 @@ export default function AgentPanel() {
   const setPanelMode = useStudioStore(s => s.setPanelMode)
   const setSidebarLayout = useStudioStore(s => s.setSidebarLayout)
   const scaleAgentPods = useStudioStore(s => s.scaleAgentPods)
+  const clearChatHistory = useStudioStore(s => s.clearChatHistory)
 
   const agent = agents.find(a => a.id === selectedAgentId)
   const zone = agent ? ZONES.find(z => z.id === agent.currentZone) : undefined
@@ -206,17 +208,33 @@ export default function AgentPanel() {
       {/* Agent info strip */}
       <div className="px-4 py-2 border-b bg-muted/30 flex-shrink-0">
         <p className="text-xs text-muted-foreground leading-relaxed">{agent.description}</p>
-        <div className="mt-1.5 flex flex-wrap gap-1 items-center">
-          {agent.tools.slice(0, 4).map(tool => (
-            <span key={tool} className="text-[10px] px-1.5 py-0.5 bg-background border rounded-md text-muted-foreground">
-              🔧 {tool}
-            </span>
-          ))}
-          {agent.tools.length > 4 && (
-            <span className="text-[10px] text-muted-foreground">+{agent.tools.length - 4}</span>
+        <div className="mt-1.5 flex flex-wrap gap-1 items-center justify-between">
+          <div className="flex flex-wrap gap-1">
+            {agent.tools.slice(0, 4).map(tool => (
+              <span key={tool} className="text-[10px] px-1.5 py-0.5 bg-background border rounded-md text-muted-foreground">
+                🔧 {tool}
+              </span>
+            ))}
+            {agent.tools.length > 4 && (
+              <span className="text-[10px] text-muted-foreground">+{agent.tools.length - 4}</span>
+            )}
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={() => clearChatHistory(agent.id)}
+              className="text-[10px] text-muted-foreground/60 hover:text-destructive transition-colors ml-auto"
+              title="清空对话记录"
+            >🗑 清空</button>
           )}
         </div>
       </div>
+
+      {/* Orchestrator dispatch panel */}
+      {agent.isOrchestrator && (
+        <div className="border-b flex-shrink-0">
+          <DispatchPanel orchestratorId={agent.id} />
+        </div>
+      )}
 
       {/* Chat + optional artifacts split */}
       <div className={`flex-1 flex overflow-hidden ${showArtifacts ? 'flex-col' : ''}`}>
@@ -263,9 +281,17 @@ export default function AgentPanel() {
               >
                 {msg.role === 'assistant' ? renderContent(msg.content) : msg.content}
                 {msg.rawTranscript && msg.rawTranscript !== msg.content && (
-                  <div className="mt-1 pt-1 border-t border-white/20 text-[10px] opacity-60">
-                    🎤 原文：{msg.rawTranscript}
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-1.5 pt-1.5 border-t border-white/20 text-[10px] space-y-0.5"
+                  >
+                    <div className="flex items-center gap-1 text-white/40">
+                      <span>🎤</span><span>AI 已纠正语音</span>
+                    </div>
+                    <div className="text-white/40 line-through">{msg.rawTranscript}</div>
+                    <div className="text-green-400/80">→ {msg.content}</div>
+                  </motion.div>
                 )}
               </div>
             </motion.div>

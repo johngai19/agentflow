@@ -26,9 +26,6 @@ export default function StudioPage() {
   const agents = useStudioStore(s => s.agents)
   const zones = useStudioStore(s => s.zones)
   const moveAgentToZone = useStudioStore(s => s.moveAgentToZone)
-  const isPanelOpen = useStudioStore(s => s.isPanelOpen)
-  const panelMode = useStudioStore(s => s.panelMode)
-  const closePanel = useStudioStore(s => s.closePanel)
 
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null)
   const [showWorkflow, setShowWorkflow] = useState(true)
@@ -158,7 +155,6 @@ export default function StudioPage() {
           <main
             ref={mainRef}
             className="flex-1 relative"
-            onClick={() => panelMode === 'modal' && isPanelOpen && closePanel()}
           >
             {/* Hero text */}
             <motion.div

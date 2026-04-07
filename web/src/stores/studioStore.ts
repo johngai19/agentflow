@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
 
 export interface ChatMessage {
@@ -51,9 +52,14 @@ interface StudioState {
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void
   dismissNotification: (id: string) => void
   simulateWork: (agentId: string, zoneId: string) => void
+  /** Orchestrator dispatches a named task to an agent, moving them to a zone */
+  dispatchTask: (fromAgentId: string, toAgentId: string, zoneId: string, taskDescription: string) => void
+  clearChatHistory: (agentId: string) => void
 }
 
-export const useStudioStore = create<StudioState>((set, get) => ({
+export const useStudioStore = create<StudioState>()(
+  persist(
+    (set, get) => ({
   agents: INITIAL_AGENTS,
   zones: ZONES,
   projects: PROJECTS,
@@ -243,4 +249,65 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }, 3000)
     }, duration)
   },
-}))
+
+  dispatchTask: (fromAgentId, toAgentId, zoneId, taskDescription) => {
+    const { agents, moveAgentToZone, addMessage, addNotification } = get()
+    const from = agents.find(a => a.id === fromAgentId)
+    const to = agents.find(a => a.id === toAgentId)
+    if (!from || !to) return
+
+    // Orchestrator sends an in-chat dispatch message
+    addMessage(fromAgentId, {
+      id: Math.random().toString(36).slice(2),
+      role: 'assistant',
+      content: `📋 已将任务「${taskDescription}」派发给 **${to.name}**（${to.role}），请前往「${ZONES.find(z => z.id === zoneId)?.name ?? zoneId}」区域执行。`,
+      timestamp: Date.now(),
+    })
+
+    // Move target agent and start work
+    addNotification({
+      agentId: fromAgentId,
+      agentName: from.name,
+      agentEmoji: from.emoji,
+      message: `${from.emoji} ${from.name} → ${to.emoji} ${to.name}：${taskDescription}`,
+      type: 'info',
+    })
+
+    setTimeout(() => moveAgentToZone(toAgentId, zoneId), 500)
+
+    // Target agent posts acknowledgement in their own chat
+    setTimeout(() => {
+      addMessage(toAgentId, {
+        id: Math.random().toString(36).slice(2),
+        role: 'assistant',
+        content: `收到 ${from.name} 的任务指派：「${taskDescription}」，正在前往工作区域…`,
+        timestamp: Date.now(),
+      })
+    }, 800)
+  },
+
+  clearChatHistory: (agentId) => {
+    set(state => ({
+      chatMessages: { ...state.chatMessages, [agentId]: [] }
+    }))
+  },
+    }),
+    {
+      name: 'agent-studio-state',
+      // Only persist chat history, zone assignments, pod counts, panel mode
+      partialize: (state) => ({
+        chatMessages: state.chatMessages,
+        panelMode: state.panelMode,
+        sidebarLayout: state.sidebarLayout,
+        agents: state.agents.map(a => ({
+          ...a,
+          // Reset volatile runtime state on restore
+          status: a.currentZone === 'default' ? 'idle' : a.status,
+          progress: undefined,
+          startTime: undefined,
+          currentTask: a.currentZone === 'default' ? undefined : a.currentTask,
+        })),
+      }),
+    }
+  )
+)
