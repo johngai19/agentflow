@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function TopNavbar() {
   return (
@@ -15,6 +16,7 @@ export function TopNavbar() {
             <Link href="/#python" className="text-muted-foreground hover:text-foreground transition-colors">Python</Link>
             <Link href="/#typescript" className="text-muted-foreground hover:text-foreground transition-colors">TypeScript</Link>
             <Link href="/#orchestration" className="text-muted-foreground hover:text-foreground transition-colors">Orchestration</Link>
+            <Link href="/studio" className="text-muted-foreground hover:text-foreground transition-colors">Studio</Link>
             <a
               href="https://github.com/johngai19/nextjskickstart"
               target="_blank"
@@ -23,6 +25,7 @@ export function TopNavbar() {
             >
               GitHub
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </div>
