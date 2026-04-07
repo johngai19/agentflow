@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
 
 export interface ChatMessage {
@@ -8,6 +8,39 @@ export interface ChatMessage {
   content: string
   timestamp: number
   rawTranscript?: string // original voice before correction
+}
+
+export interface WorkflowLink {
+  fromId: string
+  toId: string
+}
+
+// ─── localStorage guard ────────────────────────────────────────────────────
+// createJSONStorage wraps getItem/setItem/removeItem with JSON serialization.
+// We pass a custom storage object that catches QuotaExceededError silently.
+const safeStorage = createJSONStorage(() => ({
+  getItem: (name: string) => {
+    try { return localStorage.getItem(name) } catch { return null }
+  },
+  setItem: (name: string, value: string) => {
+    try { localStorage.setItem(name, value) } catch (e) {
+      console.warn('[studioStore] localStorage write failed (quota?)', e)
+    }
+  },
+  removeItem: (name: string) => {
+    try { localStorage.removeItem(name) } catch { /* ignore */ }
+  },
+}))
+
+/** Build the initial workflowLinks list from INITIAL_AGENTS.workflowLinks */
+function buildInitialLinks(): WorkflowLink[] {
+  const links: WorkflowLink[] = []
+  for (const agent of INITIAL_AGENTS) {
+    for (const toId of (agent.workflowLinks ?? [])) {
+      links.push({ fromId: agent.id, toId })
+    }
+  }
+  return links
 }
 
 export interface Notification {
@@ -38,6 +71,8 @@ interface StudioState {
   // Provider info (for display)
   providerName: string
   providerIcon: string
+  // User-editable workflow connections (source of truth for WorkflowEdges)
+  workflowLinks: WorkflowLink[]
 
   // Actions
   selectAgent: (id: string | null) => void
@@ -55,6 +90,9 @@ interface StudioState {
   /** Orchestrator dispatches a named task to an agent, moving them to a zone */
   dispatchTask: (fromAgentId: string, toAgentId: string, zoneId: string, taskDescription: string) => void
   clearChatHistory: (agentId: string) => void
+  /** Workflow link editor actions */
+  addWorkflowLink: (fromId: string, toId: string) => void
+  removeWorkflowLink: (fromId: string, toId: string) => void
 }
 
 export const useStudioStore = create<StudioState>()(
@@ -71,6 +109,7 @@ export const useStudioStore = create<StudioState>()(
   sidebarLayout: 'chat-only',
   providerName: 'Mock (Local)',
   providerIcon: '🧪',
+  workflowLinks: buildInitialLinks(),
 
   selectAgent: (id) => set({ selectedAgentId: id, isPanelOpen: !!id }),
   closePanel: () => set({ selectedAgentId: null, isPanelOpen: false }),
@@ -153,12 +192,17 @@ export const useStudioStore = create<StudioState>()(
   },
 
   addMessage: (agentId, message) => {
-    set(state => ({
-      chatMessages: {
-        ...state.chatMessages,
-        [agentId]: [...(state.chatMessages[agentId] ?? []), message],
+    set(state => {
+      const prev = state.chatMessages[agentId] ?? []
+      // Keep only the latest 100 messages in-memory (persisted slice is capped to 20)
+      const updated = prev.length >= 100 ? [...prev.slice(-99), message] : [...prev, message]
+      return {
+        chatMessages: {
+          ...state.chatMessages,
+          [agentId]: updated,
+        }
       }
-    }))
+    })
   },
 
   addNotification: (notification) => {
@@ -291,14 +335,36 @@ export const useStudioStore = create<StudioState>()(
       chatMessages: { ...state.chatMessages, [agentId]: [] }
     }))
   },
+
+  addWorkflowLink: (fromId, toId) => {
+    set(state => {
+      // Prevent duplicates and self-links
+      if (fromId === toId) return {}
+      const exists = state.workflowLinks.some(l => l.fromId === fromId && l.toId === toId)
+      if (exists) return {}
+      return { workflowLinks: [...state.workflowLinks, { fromId, toId }] }
+    })
+  },
+
+  removeWorkflowLink: (fromId, toId) => {
+    set(state => ({
+      workflowLinks: state.workflowLinks.filter(l => !(l.fromId === fromId && l.toId === toId))
+    }))
+  },
     }),
     {
       name: 'agent-studio-state',
-      // Only persist chat history, zone assignments, pod counts, panel mode
+      storage: safeStorage,
+      // Only persist chat history, zone assignments, pod counts, panel mode, workflow links
       partialize: (state) => ({
-        chatMessages: state.chatMessages,
+        // Cap each agent's chat history to the most recent 20 messages to stay within
+        // the ~5 MB localStorage quota even after long conversations.
+        chatMessages: Object.fromEntries(
+          Object.entries(state.chatMessages).map(([id, msgs]) => [id, msgs.slice(-20)])
+        ),
         panelMode: state.panelMode,
         sidebarLayout: state.sidebarLayout,
+        workflowLinks: state.workflowLinks,
         agents: state.agents.map(a => ({
           ...a,
           // Reset volatile runtime state on restore

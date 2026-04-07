@@ -6,6 +6,7 @@ import { useStudioStore, type ChatMessage } from '@/stores/studioStore'
 import { ZONES } from '@/data/studioData'
 import VoiceButton from './VoiceButton'
 import DispatchPanel from './DispatchPanel'
+import WorkflowLinkEditor from './WorkflowLinkEditor'
 
 // ── Markdown-lite renderer (bold + code blocks) ──
 function renderContent(text: string) {
@@ -391,6 +392,9 @@ export default function AgentPanel() {
           </div>
         </div>
       )}
+
+      {/* Workflow link editor */}
+      <WorkflowLinkEditor agentId={agent.id} />
 
       {/* Input area */}
       <div className="px-4 py-3 border-t bg-background flex-shrink-0">

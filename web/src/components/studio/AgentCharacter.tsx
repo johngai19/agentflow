@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { motion, type Variants } from 'framer-motion'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useStudioStore } from '@/stores/studioStore'
 import { STATUS_CONFIG, type Agent } from '@/data/studioData'
 import AgentStatusBar from './AgentStatusBar'
+import { agentPositionRegistry } from '@/lib/agentPositionRegistry'
 
 interface AgentCharacterProps {
   agent: Agent
@@ -57,9 +59,61 @@ export default function AgentCharacter({ agent }: AgentCharacterProps) {
 
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined
 
+  // Position registry: notify WorkflowEdges of our DOM position via ResizeObserver.
+  // This avoids per-frame DOM queries in WorkflowEdges (no layout thrashing).
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+
+    const report = () => {
+      const rect = el.getBoundingClientRect()
+      // We store viewport-relative coords; WorkflowEdges will subtract its container offset.
+      agentPositionRegistry.update(agent.id, {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      })
+    }
+
+    report()
+
+    const ro = new ResizeObserver(report)
+    ro.observe(el)
+
+    // Also re-report on scroll/layout shifts
+    window.addEventListener('scroll', report, { passive: true })
+    window.addEventListener('resize', report, { passive: true })
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('scroll', report)
+      window.removeEventListener('resize', report)
+      agentPositionRegistry.remove(agent.id)
+    }
+  }, [agent.id])
+
+  // Re-report position when a drag transform changes (agent moves)
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    agentPositionRegistry.update(agent.id, {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    })
+  }, [agent.id, transform])
+
+  // Merge refs: dnd-kit setNodeRef + our measurement rootRef
+  const mergeRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node)
+    ;(rootRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+  }
+
   return (
     <div
-      ref={setNodeRef}
+      ref={mergeRef}
+      data-agent-id={agent.id}
       style={style}
       className={`relative flex flex-col items-center cursor-grab active:cursor-grabbing select-none
         ${isDragging ? 'z-50 opacity-90 scale-110' : 'z-0'}

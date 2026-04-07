@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStudioStore } from '@/stores/studioStore'
+import { agentPositionRegistry, type AgentPosition } from '@/lib/agentPositionRegistry'
 
 interface Point { x: number; y: number }
 
@@ -17,7 +18,6 @@ interface Edge {
 function midCurve(from: Point, to: Point) {
   const mx = (from.x + to.x) / 2
   const my = (from.y + to.y) / 2
-  // Offset control point perpendicular to midpoint for a gentle arc
   const dx = to.x - from.x
   const dy = to.y - from.y
   const len = Math.sqrt(dx * dx + dy * dy) || 1
@@ -29,55 +29,96 @@ function midCurve(from: Point, to: Point) {
 
 export default function WorkflowEdges({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
   const agents = useStudioStore(s => s.agents)
+  const workflowLinks = useStudioStore(s => s.workflowLinks)
   const [edges, setEdges] = useState<Edge[]>([])
-  const frameRef = useRef<number>(0)
 
-  const computeEdges = useCallback(() => {
-    if (!containerRef.current) return
-    const containerRect = containerRef.current.getBoundingClientRect()
+  // Build a colour lookup from agents array (stable reference via useMemo-like approach)
+  const agentsRef = useRef(agents)
+  agentsRef.current = agents
 
-    const positions: Record<string, Point> = {}
-    for (const agent of agents) {
-      const el = containerRef.current.querySelector(`[data-agent-id="${agent.id}"]`)
-      if (el) {
-        const r = el.getBoundingClientRect()
-        positions[agent.id] = {
-          x: r.left - containerRect.left + r.width / 2,
-          y: r.top - containerRect.top + r.height / 2,
-        }
-      }
-    }
-
-    const newEdges: Edge[] = []
-    for (const agent of agents) {
-      if (!agent.workflowLinks?.length) continue
-      const from = positions[agent.id]
-      if (!from) continue
-      for (const targetId of agent.workflowLinks) {
-        const to = positions[targetId]
-        if (!to) continue
-        const targetAgent = agents.find(a => a.id === targetId)
-        newEdges.push({
-          fromId: agent.id,
-          toId: targetId,
-          fromColor: agent.color,
-          toColor: targetAgent?.color ?? '#888',
-          from,
-          to,
-        })
-      }
-    }
-    setEdges(newEdges)
-  }, [agents, containerRef])
+  const workflowLinksRef = useRef(workflowLinks)
+  workflowLinksRef.current = workflowLinks
 
   useEffect(() => {
-    const tick = () => {
-      computeEdges()
-      frameRef.current = requestAnimationFrame(tick)
+    // Subscribe to registry — fires whenever any agent position changes.
+    // No rAF loop, no per-frame DOM query.
+    const unsubscribe = agentPositionRegistry.subscribe((positions: Map<string, AgentPosition>) => {
+      const container = containerRef.current
+      if (!container) return
+
+      const containerRect = container.getBoundingClientRect()
+
+      // Translate viewport-relative positions to container-relative
+      const relPos = (vp: AgentPosition): Point => ({
+        x: vp.x - containerRect.left,
+        y: vp.y - containerRect.top,
+      })
+
+      const newEdges: Edge[] = []
+      const currentAgents = agentsRef.current
+      const currentLinks = workflowLinksRef.current
+
+      // Collect all link pairs from the store (user-editable)
+      for (const link of currentLinks) {
+        const fromAgent = currentAgents.find(a => a.id === link.fromId)
+        const toAgent = currentAgents.find(a => a.id === link.toId)
+        if (!fromAgent || !toAgent) continue
+
+        const fromVP = positions.get(link.fromId)
+        const toVP = positions.get(link.toId)
+        if (!fromVP || !toVP) continue
+
+        newEdges.push({
+          fromId: link.fromId,
+          toId: link.toId,
+          fromColor: fromAgent.color,
+          toColor: toAgent.color,
+          from: relPos(fromVP),
+          to: relPos(toVP),
+        })
+      }
+
+      setEdges(newEdges)
+    })
+
+    return unsubscribe
+  }, [containerRef]) // workflowLinks / agents changes are picked up via refs
+
+  // Re-compute edges when store links or agents change (the registry snapshot stays the same
+  // but the logical connections may have changed).
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const containerRect = container.getBoundingClientRect()
+    const positions = agentPositionRegistry.snapshot()
+
+    const relPos = (vp: AgentPosition): Point => ({
+      x: vp.x - containerRect.left,
+      y: vp.y - containerRect.top,
+    })
+
+    const newEdges: Edge[] = []
+    for (const link of workflowLinks) {
+      const fromAgent = agents.find(a => a.id === link.fromId)
+      const toAgent = agents.find(a => a.id === link.toId)
+      if (!fromAgent || !toAgent) continue
+
+      const fromVP = positions.get(link.fromId)
+      const toVP = positions.get(link.toId)
+      if (!fromVP || !toVP) continue
+
+      newEdges.push({
+        fromId: link.fromId,
+        toId: link.toId,
+        fromColor: fromAgent.color,
+        toColor: toAgent.color,
+        from: relPos(fromVP),
+        to: relPos(toVP),
+      })
     }
-    frameRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [computeEdges])
+    setEdges(newEdges)
+  }, [agents, workflowLinks, containerRef])
 
   if (!edges.length) return null
 
