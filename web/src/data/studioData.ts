@@ -14,6 +14,17 @@ export interface Agent {
   currentZone: string
   currentTask?: string
   completedTasks: number
+  // Progress tracking
+  progress?: number         // 0-100
+  startTime?: number        // ms timestamp when current task started
+  taskDuration?: number     // expected ms duration (for progress bar)
+  // kagent / K8s
+  podCount?: number         // current replica count
+  podMaxCount?: number      // max replicas
+  isOrchestrator?: boolean  // master scheduler agent flag
+  // Workflow & grouping
+  projectId?: string        // which project this agent belongs to
+  workflowLinks?: string[]  // IDs of agents this agent hands off to
 }
 
 export interface Zone {
@@ -27,7 +38,43 @@ export interface Zone {
   cronLabel?: string
 }
 
+export interface Project {
+  id: string
+  name: string
+  color: string
+  icon: string
+  description: string
+  sharedResources: {
+    memory?: string[]    // shared memory keys
+    files?: string[]     // shared file paths / buckets
+    skills?: string[]    // shared skill names
+    mcpServers?: string[] // shared MCP server IDs
+  }
+  agentIds: string[]
+}
+
 export const INITIAL_AGENTS: Agent[] = [
+  // ── Master Orchestrator ──────────────────────────────────────────
+  {
+    id: 'max',
+    name: 'Max',
+    emoji: '👑',
+    color: '#f59e0b',
+    bgColor: 'bg-amber-500',
+    role: '调度总管',
+    description: '负责全局任务调度和 Agent 协调，监控所有工作区的状态，自动分配最优 Agent 执行任务，处理异常和任务交接。',
+    tools: ['orchestrate', 'schedule', 'monitor_all', 'assign_task', 'escalate', 'report_status'],
+    personality: '总揽全局，沉稳果断。用最少的话下达最精准的指令，出问题时第一时间响应',
+    status: 'idle',
+    currentZone: 'default',
+    completedTasks: 47,
+    isOrchestrator: true,
+    podCount: 1,
+    podMaxCount: 1,
+    workflowLinks: ['alice', 'bob', 'charlie', 'diana', 'eve'],
+    projectId: 'infra-ops',
+  },
+  // ── Domain Agents ─────────────────────────────────────────────────
   {
     id: 'alice',
     name: 'Alice',
@@ -41,6 +88,10 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle',
     currentZone: 'default',
     completedTasks: 12,
+    podCount: 1,
+    podMaxCount: 5,
+    projectId: 'infra-ops',
+    workflowLinks: ['bob'],
   },
   {
     id: 'bob',
@@ -55,6 +106,10 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle',
     currentZone: 'default',
     completedTasks: 28,
+    podCount: 2,
+    podMaxCount: 8,
+    projectId: 'infra-ops',
+    workflowLinks: ['charlie'],
   },
   {
     id: 'charlie',
@@ -69,6 +124,10 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle',
     currentZone: 'default',
     completedTasks: 35,
+    podCount: 1,
+    podMaxCount: 6,
+    projectId: 'infra-ops',
+    workflowLinks: ['diana'],
   },
   {
     id: 'diana',
@@ -83,6 +142,10 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle',
     currentZone: 'default',
     completedTasks: 19,
+    podCount: 1,
+    podMaxCount: 4,
+    projectId: 'security',
+    workflowLinks: ['eve'],
   },
   {
     id: 'eve',
@@ -97,6 +160,10 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle',
     currentZone: 'default',
     completedTasks: 8,
+    podCount: 1,
+    podMaxCount: 3,
+    projectId: 'infra-ops',
+    workflowLinks: [],
   },
 ]
 
@@ -140,12 +207,43 @@ export const ZONES: Zone[] = [
   },
 ]
 
-export const STATUS_CONFIG: Record<AgentStatus, { label: string; color: string; ring: string; animation: string }> = {
-  idle:      { label: '空闲',   color: 'text-slate-500',  ring: 'ring-slate-300',  animation: 'animate-pulse' },
-  assigned:  { label: '已分配', color: 'text-blue-500',   ring: 'ring-blue-400',   animation: '' },
-  working:   { label: '工作中', color: 'text-amber-500',  ring: 'ring-amber-400',  animation: 'animate-spin' },
-  reporting: { label: '汇报中', color: 'text-green-500',  ring: 'ring-green-400',  animation: 'animate-bounce' },
-  error:     { label: '出错了', color: 'text-red-500',    ring: 'ring-red-400',    animation: 'animate-ping' },
+export const PROJECTS: Project[] = [
+  {
+    id: 'infra-ops',
+    name: '基础设施运维',
+    color: '#6366f1',
+    icon: '🏗️',
+    description: '云基础设施监控、部署自动化、成本优化',
+    sharedResources: {
+      memory: ['infra-context', 'aliyun-credentials'],
+      files: ['configs/aliyun.yaml', 'configs/terraform.tfvars'],
+      skills: ['kubectl', 'terraform', 'monitoring'],
+      mcpServers: ['aliyun-mcp', 'k8s-mcp'],
+    },
+    agentIds: ['max', 'alice', 'bob', 'charlie', 'eve'],
+  },
+  {
+    id: 'security',
+    name: '安全合规',
+    color: '#ef4444',
+    icon: '🔐',
+    description: '漏洞扫描、合规检查、安全告警',
+    sharedResources: {
+      memory: ['security-findings', 'cve-database'],
+      files: ['policies/security.yaml'],
+      skills: ['security_scan', 'compliance_audit'],
+      mcpServers: ['security-mcp'],
+    },
+    agentIds: ['max', 'diana'],
+  },
+]
+
+export const STATUS_CONFIG: Record<AgentStatus, { label: string; color: string; ring: string; animation: string; dot: string }> = {
+  idle:      { label: '空闲',   color: 'text-slate-500',  ring: 'ring-slate-300',  animation: 'animate-pulse', dot: 'bg-slate-400' },
+  assigned:  { label: '已分配', color: 'text-blue-500',   ring: 'ring-blue-400',   animation: '',              dot: 'bg-blue-500' },
+  working:   { label: '工作中', color: 'text-amber-500',  ring: 'ring-amber-400',  animation: 'animate-spin',  dot: 'bg-amber-500' },
+  reporting: { label: '汇报中', color: 'text-green-500',  ring: 'ring-green-400',  animation: 'animate-bounce', dot: 'bg-green-500' },
+  error:     { label: '出错了', color: 'text-red-500',    ring: 'ring-red-400',    animation: 'animate-ping',  dot: 'bg-red-500' },
 }
 
 // Simulate work tasks per zone

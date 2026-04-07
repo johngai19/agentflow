@@ -1,10 +1,11 @@
 'use client'
 
-import { motion, AnimatePresence, type Variants } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useStudioStore } from '@/stores/studioStore'
 import { STATUS_CONFIG, type Agent } from '@/data/studioData'
+import AgentStatusBar from './AgentStatusBar'
 
 interface AgentCharacterProps {
   agent: Agent
@@ -66,18 +67,30 @@ export default function AgentCharacter({ agent }: AgentCharacterProps) {
       {...listeners}
       {...attributes}
     >
-      {/* Body */}
+      {/* Body + status bar container */}
       <motion.div
         variants={bodyVariants}
         animate={isDragging ? 'idle' : agent.status}
-        className="relative"
+        className="relative mt-16"
         onClick={(e) => { e.stopPropagation(); selectAgent(isSelected ? null : agent.id) }}
       >
+        {/* Status bar floating above head */}
+        <AgentStatusBar agent={agent} />
+
         {/* Outer glow ring */}
         <div
-          className={`absolute inset-0 rounded-full blur-md opacity-50 transition-all duration-500`}
+          className="absolute inset-0 rounded-full blur-md opacity-50 transition-all duration-500"
           style={{ backgroundColor: agent.color, transform: 'scale(1.3)' }}
         />
+
+        {/* Orchestrator crown */}
+        {agent.isOrchestrator && (
+          <motion.div
+            className="absolute -top-5 left-1/2 -translate-x-1/2 text-base z-10"
+            animate={{ y: [-1, 1, -1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          >👑</motion.div>
+        )}
 
         {/* Selected ring */}
         {isSelected && (
@@ -132,22 +145,18 @@ export default function AgentCharacter({ agent }: AgentCharacterProps) {
               transition={{ duration: 0.5, repeat: Infinity }}
             >🚩</motion.div>
           )}
-        </motion.div>
 
-        {/* Task bubble */}
-        <AnimatePresence>
-          {agent.currentTask && agent.status === 'working' && (
-            <motion.div
-              initial={{ opacity: 0, y: 4, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.9 }}
-              className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap
-                bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full pointer-events-none z-10"
+          {/* Pod count badge (kagent) */}
+          {(agent.podCount ?? 1) > 1 && (
+            <div
+              className="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold
+                flex items-center justify-center text-white shadow"
+              style={{ backgroundColor: agent.color }}
             >
-              {agent.currentTask}
-            </motion.div>
+              ×{agent.podCount}
+            </div>
           )}
-        </AnimatePresence>
+        </motion.div>
       </motion.div>
 
       {/* Name + status badge */}

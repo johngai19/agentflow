@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { INITIAL_AGENTS, ZONES, ZONE_TASKS, type Agent, type Zone, type AgentStatus } from '@/data/studioData'
+import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
 
 export interface ChatMessage {
   id: string
@@ -19,19 +19,34 @@ export interface Notification {
   timestamp: number
 }
 
+// Panel display mode: sidebar (ChatGPT-style) or modal popup
+export type PanelMode = 'sidebar' | 'modal'
+// Whether to show artifacts pane in sidebar
+export type SidebarLayout = 'chat-only' | 'split-artifacts'
+
 interface StudioState {
   agents: Agent[]
   zones: Zone[]
+  projects: Project[]
   selectedAgentId: string | null
   chatMessages: Record<string, ChatMessage[]>
   notifications: Notification[]
   isPanelOpen: boolean
+  panelMode: PanelMode
+  sidebarLayout: SidebarLayout
+  // Provider info (for display)
+  providerName: string
+  providerIcon: string
 
   // Actions
   selectAgent: (id: string | null) => void
   closePanel: () => void
+  setPanelMode: (mode: PanelMode) => void
+  setSidebarLayout: (layout: SidebarLayout) => void
   moveAgentToZone: (agentId: string, zoneId: string) => void
   updateAgentStatus: (agentId: string, status: AgentStatus, task?: string) => void
+  updateAgentProgress: (agentId: string, progress: number) => void
+  scaleAgentPods: (agentId: string, delta: number) => void
   addMessage: (agentId: string, message: ChatMessage) => void
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void
   dismissNotification: (id: string) => void
@@ -41,13 +56,20 @@ interface StudioState {
 export const useStudioStore = create<StudioState>((set, get) => ({
   agents: INITIAL_AGENTS,
   zones: ZONES,
+  projects: PROJECTS,
   selectedAgentId: null,
   chatMessages: {},
   notifications: [],
   isPanelOpen: false,
+  panelMode: 'sidebar',
+  sidebarLayout: 'chat-only',
+  providerName: 'Mock (Local)',
+  providerIcon: '🧪',
 
   selectAgent: (id) => set({ selectedAgentId: id, isPanelOpen: !!id }),
   closePanel: () => set({ selectedAgentId: null, isPanelOpen: false }),
+  setPanelMode: (mode) => set({ panelMode: mode }),
+  setSidebarLayout: (layout) => set({ sidebarLayout: layout }),
 
   moveAgentToZone: (agentId, zoneId) => {
     const { agents, addNotification, simulateWork } = get()
@@ -57,7 +79,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
     set(state => ({
       agents: state.agents.map(a =>
-        a.id === agentId ? { ...a, currentZone: zoneId, status: zoneId === 'default' ? 'idle' : 'assigned' } : a
+        a.id === agentId
+          ? { ...a, currentZone: zoneId, status: zoneId === 'default' ? 'idle' : 'assigned', progress: undefined, startTime: undefined }
+          : a
       )
     }))
 
@@ -70,7 +94,6 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         message: `${agent.name} 已进入「${zone.name}」，准备开始工作`,
         type: 'info',
       })
-      // Start simulated work after a short delay
       setTimeout(() => simulateWork(agentId, zoneId), 1500)
     } else {
       addNotification({
@@ -91,6 +114,38 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     }))
   },
 
+  updateAgentProgress: (agentId, progress) => {
+    set(state => ({
+      agents: state.agents.map(a =>
+        a.id === agentId ? { ...a, progress } : a
+      )
+    }))
+  },
+
+  scaleAgentPods: (agentId, delta) => {
+    const { agents, addNotification } = get()
+    const agent = agents.find(a => a.id === agentId)
+    if (!agent) return
+    const current = agent.podCount ?? 1
+    const max = agent.podMaxCount ?? 5
+    const newCount = Math.max(1, Math.min(max, current + delta))
+    if (newCount === current) return
+
+    set(state => ({
+      agents: state.agents.map(a =>
+        a.id === agentId ? { ...a, podCount: newCount } : a
+      )
+    }))
+
+    addNotification({
+      agentId,
+      agentName: agent.name,
+      agentEmoji: agent.emoji,
+      message: `${agent.name} 已${delta > 0 ? '扩容' : '缩容'}至 ${newCount} 个 Pod`,
+      type: 'info',
+    })
+  },
+
   addMessage: (agentId, message) => {
     set(state => ({
       chatMessages: {
@@ -105,10 +160,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set(state => ({
       notifications: [
         { ...notification, id, timestamp: Date.now() },
-        ...state.notifications.slice(0, 4), // keep max 5
+        ...state.notifications.slice(0, 4),
       ]
     }))
-    // Auto dismiss after 5s
     setTimeout(() => get().dismissNotification(id), 5000)
   },
 
@@ -119,23 +173,44 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   simulateWork: (agentId, zoneId) => {
-    const { agents, updateAgentStatus, addNotification } = get()
+    const { agents, updateAgentStatus, updateAgentProgress, addNotification } = get()
     const agent = agents.find(a => a.id === agentId)
     if (!agent || agent.currentZone !== zoneId) return
 
     const tasks = ZONE_TASKS[zoneId] ?? ['执行任务中...']
     const task = tasks[Math.floor(Math.random() * tasks.length)]
+    const duration = 6000 + Math.random() * 6000
 
-    // Working phase
+    // Mark task start time
+    set(state => ({
+      agents: state.agents.map(a =>
+        a.id === agentId ? { ...a, startTime: Date.now(), taskDuration: duration, progress: 0 } : a
+      )
+    }))
+
     updateAgentStatus(agentId, 'working', task)
 
-    // Complete after 6-12 seconds
-    const duration = 6000 + Math.random() * 6000
+    // Progress update loop — tick every 500ms
+    const tickInterval = 500
+    const ticks = Math.floor(duration / tickInterval)
+    let tick = 0
+    const progressTimer = setInterval(() => {
+      tick++
+      const progress = Math.min(95, Math.round((tick / ticks) * 100))
+      updateAgentProgress(agentId, progress)
+
+      // Check if agent still in this zone
+      const current = get().agents.find(a => a.id === agentId)
+      if (!current || current.currentZone !== zoneId) clearInterval(progressTimer)
+    }, tickInterval)
+
+    // Complete
     setTimeout(() => {
+      clearInterval(progressTimer)
       const current = get().agents.find(a => a.id === agentId)
       if (!current || current.currentZone !== zoneId) return
 
-      // Reporting phase
+      updateAgentProgress(agentId, 100)
       updateAgentStatus(agentId, 'reporting', '任务完成，整理报告...')
 
       set(state => ({
@@ -152,12 +227,15 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         type: 'success',
       })
 
-      // Back to assigned after reporting
       setTimeout(() => {
         const c = get().agents.find(a => a.id === agentId)
         if (c?.currentZone === zoneId) {
           updateAgentStatus(agentId, 'assigned', '等待下一轮任务...')
-          // Loop for cron zone
+          set(state => ({
+            agents: state.agents.map(a =>
+              a.id === agentId ? { ...a, progress: undefined, startTime: undefined } : a
+            )
+          }))
           if (zoneId === 'cron') {
             setTimeout(() => get().simulateWork(agentId, zoneId), 8000)
           }

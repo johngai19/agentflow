@@ -77,6 +77,7 @@ export default function Zone({ zone }: ZoneProps) {
             <motion.div
               key={agent.id}
               layout
+              data-agent-id={agent.id}
               initial={{ scale: 0.5, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.5, opacity: 0, y: -10 }}
