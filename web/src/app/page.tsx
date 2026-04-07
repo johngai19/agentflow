@@ -1,9 +1,30 @@
+import Link from "next/link";
 import { FrameworkCard } from "@/components/frameworks/FrameworkCard";
 import { frameworks, pythonFrameworks, typescriptFrameworks, orchestrationFrameworks } from "@/data/frameworks";
 
 export default function Home() {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Agent Studio Banner */}
+      <Link
+        href="/studio"
+        className="group flex items-center justify-between gap-4 mb-8 px-5 py-4 rounded-2xl
+          bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950
+          border border-indigo-700/50 hover:border-indigo-500/80 transition-all duration-200
+          hover:shadow-lg hover:shadow-indigo-950/50"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🎮</span>
+          <div>
+            <div className="font-bold text-white text-sm">Agent Studio — 游戏化控制台 (NEW)</div>
+            <div className="text-xs text-indigo-300/70">拖拽分配 Agent · 点击对话 · 语音下达指令 · AI 自动纠错专业术语</div>
+          </div>
+        </div>
+        <span className="text-indigo-400 group-hover:text-white transition-colors text-sm font-medium flex-shrink-0">
+          进入体验 →
+        </span>
+      </Link>
+
       {/* Hero */}
       <div className="text-center mb-16">
         <div className="text-6xl mb-4">🤖</div>
