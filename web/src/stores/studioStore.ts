@@ -2,12 +2,19 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
 
+export interface ToolEvent {
+  name: string
+  input?: unknown
+  output?: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: number
-  rawTranscript?: string // original voice before correction
+  rawTranscript?: string  // original voice before correction
+  toolEvents?: ToolEvent[] // real tool_use blocks from Claude
 }
 
 export interface WorkflowLink {
