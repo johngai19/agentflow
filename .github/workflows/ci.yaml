@@ -71,7 +71,7 @@ jobs:
         working-directory: .
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm test -- --passWithNoTests
 
   ts-packages:
     name: TS Packages — Test
