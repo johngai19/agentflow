@@ -8,7 +8,7 @@
  *   - auditApi: queryExecutions
  *   - OpsAgentApiError: thrown on non-2xx
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   agentRegistryApi,
   workflowEngineApi,
@@ -153,9 +153,9 @@ describe('agentRegistryApi', () => {
         ok: true, status: 200, json: () => Promise.resolve(sampleAgent),
       })
       vi.stubGlobal('fetch', fetchSpy)
-      const { registered_at: _, last_seen: __, is_healthy: ___, ...agentPayload } = sampleAgent
+      const { registered_at: _r, last_seen: _l, is_healthy: _h, ...agentPayload } = sampleAgent
       await agentRegistryApi.registerAgent(agentPayload)
-      const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit]
+      const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit]
       expect(options.method).toBe('POST')
       const body = JSON.parse(options.body as string)
       expect(body.agent_id).toBe('test-agent-1')

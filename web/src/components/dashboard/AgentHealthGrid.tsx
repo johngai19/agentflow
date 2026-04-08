@@ -17,13 +17,6 @@ import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { agentRegistryApi, type AgentInfo, OpsAgentApiError } from '@/lib/opsagentApi'
 
-// ─── AgentInfo → agentflow Agent shape adapter ────────────────────────────────
-
-function mapAgentInfoToStatus(agent: AgentInfo): 'running' | 'idle' | 'error' {
-  if (!agent.is_healthy) return 'error'
-  return 'idle'
-}
-
 // ─── Live Agent Card ──────────────────────────────────────────────────────────
 
 function LiveAgentCard({ agent }: { agent: AgentInfo }) {
