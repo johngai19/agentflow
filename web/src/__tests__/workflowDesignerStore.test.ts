@@ -429,7 +429,7 @@ describe('workflowDesignerStore', () => {
 
   it('addNode returns empty string when no active workflow', () => {
     const emptyStore = makeStore()  // no seed
-    emptyStore.getState().workflows  // just to ensure it's initialised
+    void emptyStore.getState().workflows  // just to ensure it's initialised
     // Manually set activeWorkflowId to null
     const id = emptyStore.getState().addNode('agent', { x: 0, y: 0 })
     // No active workflow exists in this store (workflows is empty)

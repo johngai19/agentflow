@@ -15,7 +15,7 @@ import { NodePalette } from '@/components/workflow/NodePalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { NodeConfigPanel } from '@/components/workflow/NodeConfigPanel'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
-import { NODE_TYPE_MAP, NODE_PALETTE_ITEMS } from '@/components/workflow/nodes/nodeConfig'
+import { NODE_TYPE_MAP } from '@/components/workflow/nodes/nodeConfig'
 import type { WorkflowNodeType } from '@/types/workflow'
 
 // ─── Version history panel ────────────────────────────────────────────────────

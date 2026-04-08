@@ -4,7 +4,7 @@ import { useRef, useCallback, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
 import { WorkflowNodeRenderer } from './nodes/WorkflowNodeRenderer'
-import type { WorkflowNode, WorkflowEdge, WorkflowNodeType, Position } from '@/types/workflow'
+import type { WorkflowNode, WorkflowEdge, Position } from '@/types/workflow'
 
 // ─── Edge rendering (SVG) ─────────────────────────────────────────────────────
 
@@ -107,7 +107,6 @@ export function WorkflowCanvas({ className = '' }: WorkflowCanvasProps) {
   const clearSelection = useWorkflowDesignerStore(s => s.clearSelection)
   const moveNode = useWorkflowDesignerStore(s => s.moveNode)
   const addEdge = useWorkflowDesignerStore(s => s.addEdge)
-  const addNode = useWorkflowDesignerStore(s => s.addNode)
   const setViewport = useWorkflowDesignerStore(s => s.setViewport)
 
   const containerRef = useRef<HTMLDivElement>(null)
