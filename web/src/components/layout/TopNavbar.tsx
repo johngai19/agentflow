@@ -23,6 +23,7 @@ export function TopNavbar() {
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
             <Link href="/workflows/runs" className="text-muted-foreground hover:text-foreground transition-colors">Runs</Link>
             <Link href="/workflows/designer" className="text-muted-foreground hover:text-foreground transition-colors">Designer</Link>
+            <Link href="/audit" className="text-muted-foreground hover:text-foreground transition-colors">审计</Link>
             <a
               href="https://github.com/johngai19/nextjskickstart"
               target="_blank"
