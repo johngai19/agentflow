@@ -21,17 +21,19 @@ import ProjectGroupPanel from '@/components/studio/ProjectGroupPanel'
 import KagentConfigPanel from '@/components/studio/KagentConfigPanel'
 import WorkflowEdges from '@/components/studio/WorkflowEdges'
 import { STATUS_CONFIG, type Agent } from '@/data/studioData'
+import dynamic from 'next/dynamic'
+const PixiStage = dynamic(() => import('@/components/studio/PixiStage'), { ssr: false })
 
 export default function StudioPage() {
   const agents = useStudioStore(s => s.agents)
   const zones = useStudioStore(s => s.zones)
   const moveAgentToZone = useStudioStore(s => s.moveAgentToZone)
-  const isPanelOpen = useStudioStore(s => s.isPanelOpen)
-  const panelMode = useStudioStore(s => s.panelMode)
-  const closePanel = useStudioStore(s => s.closePanel)
+  const demoMode = useStudioStore(s => s.demoMode)
+  const toggleDemoMode = useStudioStore(s => s.toggleDemoMode)
 
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null)
   const [showWorkflow, setShowWorkflow] = useState(true)
+  const [pixiMode, setPixiMode] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
 
   const sensors = useSensors(
@@ -86,6 +88,30 @@ export default function StudioPage() {
             <div className="text-xs text-white/70 hidden sm:block">
               ✓ <span className="text-green-400 font-semibold">{totalCompleted}</span> 完成
             </div>
+            {/* PixiJS canvas mode toggle */}
+            <button
+              onClick={() => setPixiMode(v => !v)}
+              title={pixiMode ? 'Canvas模式（PixiJS）\n点击切换回标准模式' : '标准模式（CSS/DnD）\n点击切换到Canvas模式'}
+              className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                pixiMode
+                  ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
+                  : 'bg-white/5 border-white/20 text-white/40'
+              }`}
+            >
+              {pixiMode ? '🎨 Canvas' : '🎨'}
+            </button>
+            {/* Demo mode toggle */}
+            <button
+              onClick={toggleDemoMode}
+              title={demoMode ? '当前：演示模式（无需API密钥）\n点击切换到真实模式' : '当前：真实模式（使用Anthropic API）\n点击切换到演示模式'}
+              className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                demoMode
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-green-500/20 border-green-500/40 text-green-300'
+              }`}
+            >
+              {demoMode ? '🧪 演示' : '⚡ 真实'}
+            </button>
             {/* Workflow toggle */}
             <button
               onClick={() => setShowWorkflow(v => !v)}
@@ -158,7 +184,6 @@ export default function StudioPage() {
           <main
             ref={mainRef}
             className="flex-1 relative"
-            onClick={() => panelMode === 'modal' && isPanelOpen && closePanel()}
           >
             {/* Hero text */}
             <motion.div
@@ -172,22 +197,36 @@ export default function StudioPage() {
               </p>
             </motion.div>
 
-            {/* Zones grid with SVG overlay */}
-            <div className="relative">
-              {showWorkflow && <WorkflowEdges containerRef={mainRef} />}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {zones.map((zone, i) => (
-                  <motion.div
-                    key={zone.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                  >
-                    <Zone zone={zone} />
-                  </motion.div>
-                ))}
+            {/* Canvas mode (PixiJS) or standard DnD zones */}
+            {pixiMode ? (
+              <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ height: 480 }}>
+                <PixiStage
+                  agents={agents}
+                  zones={zones}
+                  onAgentClick={(id) => useStudioStore.getState().selectAgent(id)}
+                  onAgentDrop={moveAgentToZone}
+                />
+                <div className="absolute bottom-2 right-3 text-[10px] text-white/30">
+                  🎨 PixiJS Canvas 模式 · 点击 Agent 对话
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="relative">
+                {showWorkflow && <WorkflowEdges containerRef={mainRef} />}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {zones.map((zone, i) => (
+                    <motion.div
+                      key={zone.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.08 }}
+                    >
+                      <Zone zone={zone} />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Mobile: project + kagent panels */}
             <div className="lg:hidden mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">

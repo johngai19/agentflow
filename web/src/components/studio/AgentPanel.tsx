@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useStudioStore, type ChatMessage } from '@/stores/studioStore'
+import { useStudioStore, type ChatMessage, type ToolEvent } from '@/stores/studioStore'
 import { ZONES } from '@/data/studioData'
 import VoiceButton from './VoiceButton'
+import DispatchPanel from './DispatchPanel'
+import WorkflowLinkEditor from './WorkflowLinkEditor'
 
-// ── Markdown-lite renderer (bold + code blocks) ──
+// ── Markdown-lite renderer ───────────────────────────────────────────────────
 function renderContent(text: string) {
   const parts = text.split(/(```[\s\S]*?```|`[^`]+`)/g)
   return parts.map((part, i) => {
@@ -21,11 +23,58 @@ function renderContent(text: string) {
     if (part.startsWith('`') && part.endsWith('`')) {
       return <code key={i} className="bg-black/20 rounded px-1 text-[11px]">{part.slice(1, -1)}</code>
     }
-    // Bold
     return <span key={i}>{part.split(/\*\*(.*?)\*\*/g).map((s, j) =>
       j % 2 === 1 ? <strong key={j}>{s}</strong> : s
     )}</span>
   })
+}
+
+// ── Tool call block ──────────────────────────────────────────────────────────
+function ToolBlock({ tool }: { tool: ToolEvent }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="my-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 overflow-hidden text-xs"
+    >
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-left"
+      >
+        <span className="text-indigo-400">🔧</span>
+        <span className="font-mono text-indigo-300 font-medium">{tool.name}</span>
+        {tool.output
+          ? <span className="ml-auto text-green-400 text-[10px]">✓ 完成</span>
+          : <span className="ml-auto text-amber-400 text-[10px] animate-pulse">运行中…</span>
+        }
+        <span className="text-indigo-400/60 text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
+            className="overflow-hidden border-t border-indigo-500/20"
+          >
+            <div className="px-3 py-2 space-y-1.5">
+              {tool.input != null && (
+                <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap bg-black/20 rounded p-1.5 max-h-24 overflow-auto">
+                  {JSON.stringify(tool.input, null, 2)}
+                </pre>
+              )}
+              {tool.output && (
+                <pre className="text-[10px] text-green-300/80 whitespace-pre-wrap bg-black/20 rounded p-1.5 max-h-40 overflow-auto">
+                  {tool.output}
+                </pre>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
 }
 
 export default function AgentPanel() {
@@ -40,6 +89,7 @@ export default function AgentPanel() {
   const setPanelMode = useStudioStore(s => s.setPanelMode)
   const setSidebarLayout = useStudioStore(s => s.setSidebarLayout)
   const scaleAgentPods = useStudioStore(s => s.scaleAgentPods)
+  const clearChatHistory = useStudioStore(s => s.clearChatHistory)
 
   const agent = agents.find(a => a.id === selectedAgentId)
   const zone = agent ? ZONES.find(z => z.id === agent.currentZone) : undefined
@@ -51,6 +101,7 @@ export default function AgentPanel() {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
+  const [streamingTools, setStreamingTools] = useState<ToolEvent[]>([])
   const [artifacts, setArtifacts] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -78,6 +129,7 @@ export default function AgentPanel() {
     setInput('')
     setIsStreaming(true)
     setStreamingText('')
+    setStreamingTools([])
 
     try {
       const res = await fetch('/api/agent-chat', {
@@ -92,42 +144,70 @@ export default function AgentPanel() {
 
       if (!res.ok || !res.body) throw new Error('Stream failed')
 
+      // Parse NDJSON event stream
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
-      let full = ''
+      let buf = ''
+      let fullText = ''
+      const tools: ToolEvent[] = []
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        full += chunk
-        setStreamingText(full)
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const ev = JSON.parse(line)
+            if (ev.type === 'text') {
+              fullText += ev.text
+              setStreamingText(fullText)
+            } else if (ev.type === 'tool_start') {
+              tools.push({ name: ev.name, input: ev.input })
+              setStreamingTools([...tools])
+            } else if (ev.type === 'tool_result') {
+              const t = tools.find(t => t.name === ev.name && !t.output)
+              if (t) t.output = ev.output
+              setStreamingTools([...tools])
+            }
+          } catch { /* skip malformed line */ }
+        }
       }
 
+      // Save final message (text + tools summary)
+      const toolSummary = tools.length > 0
+        ? `\n\n<tools>${JSON.stringify(tools)}</tools>`
+        : ''
       const assistantMsg: ChatMessage = {
         id: Math.random().toString(36).slice(2),
         role: 'assistant',
-        content: full,
+        content: fullText + toolSummary,
         timestamp: Date.now(),
+        toolEvents: tools.length > 0 ? tools : undefined,
       }
       addMessage(agent.id, assistantMsg)
 
       // Extract code blocks as artifacts
-      const codeBlocks = full.match(/```[\s\S]*?```/g) ?? []
+      const codeBlocks = fullText.match(/```[\s\S]*?```/g) ?? []
       if (codeBlocks.length > 0) {
         setArtifacts(prev => [...prev, ...codeBlocks.map(b => b.slice(3, -3))])
       }
+      // Also save tool outputs as artifacts
+      tools.forEach(t => { if (t.output) setArtifacts(prev => [...prev, `# ${t.name}\n${t.output}`]) })
     } catch {
-      const errMsg: ChatMessage = {
+      addMessage(agent.id, {
         id: Math.random().toString(36).slice(2),
         role: 'assistant',
         content: '⚠️ 连接失败，请检查 ANTHROPIC_API_KEY 环境变量配置。',
         timestamp: Date.now(),
-      }
-      addMessage(agent.id, errMsg)
+      })
     } finally {
       setIsStreaming(false)
       setStreamingText('')
+      setStreamingTools([])
     }
   }, [agent, messages, addMessage, isStreaming, zone])
 
@@ -206,17 +286,33 @@ export default function AgentPanel() {
       {/* Agent info strip */}
       <div className="px-4 py-2 border-b bg-muted/30 flex-shrink-0">
         <p className="text-xs text-muted-foreground leading-relaxed">{agent.description}</p>
-        <div className="mt-1.5 flex flex-wrap gap-1 items-center">
-          {agent.tools.slice(0, 4).map(tool => (
-            <span key={tool} className="text-[10px] px-1.5 py-0.5 bg-background border rounded-md text-muted-foreground">
-              🔧 {tool}
-            </span>
-          ))}
-          {agent.tools.length > 4 && (
-            <span className="text-[10px] text-muted-foreground">+{agent.tools.length - 4}</span>
+        <div className="mt-1.5 flex flex-wrap gap-1 items-center justify-between">
+          <div className="flex flex-wrap gap-1">
+            {agent.tools.slice(0, 4).map(tool => (
+              <span key={tool} className="text-[10px] px-1.5 py-0.5 bg-background border rounded-md text-muted-foreground">
+                🔧 {tool}
+              </span>
+            ))}
+            {agent.tools.length > 4 && (
+              <span className="text-[10px] text-muted-foreground">+{agent.tools.length - 4}</span>
+            )}
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={() => clearChatHistory(agent.id)}
+              className="text-[10px] text-muted-foreground/60 hover:text-destructive transition-colors ml-auto"
+              title="清空对话记录"
+            >🗑 清空</button>
           )}
         </div>
       </div>
+
+      {/* Orchestrator dispatch panel */}
+      {agent.isOrchestrator && (
+        <div className="border-b flex-shrink-0">
+          <DispatchPanel orchestratorId={agent.id} />
+        </div>
+      )}
 
       {/* Chat + optional artifacts split */}
       <div className={`flex-1 flex overflow-hidden ${showArtifacts ? 'flex-col' : ''}`}>
@@ -261,17 +357,47 @@ export default function AgentPanel() {
                     : 'bg-muted rounded-tl-sm'
                   }`}
               >
-                {msg.role === 'assistant' ? renderContent(msg.content) : msg.content}
+                {msg.role === 'assistant'
+                  ? renderContent(msg.content.replace(/<tools>[\s\S]*?<\/tools>/g, ''))
+                  : msg.content}
+
+                {/* Tool call events */}
+                {msg.toolEvents?.map((t, i) => (
+                  <ToolBlock key={i} tool={t} />
+                ))}
+
+                {/* Voice correction diff */}
                 {msg.rawTranscript && msg.rawTranscript !== msg.content && (
-                  <div className="mt-1 pt-1 border-t border-white/20 text-[10px] opacity-60">
-                    🎤 原文：{msg.rawTranscript}
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-1.5 pt-1.5 border-t border-white/20 text-[10px] space-y-0.5"
+                  >
+                    <div className="flex items-center gap-1 text-white/40">
+                      <span>🎤</span><span>AI 已纠正语音</span>
+                    </div>
+                    <div className="text-white/40 line-through">{msg.rawTranscript}</div>
+                    <div className="text-green-400/80">→ {msg.content}</div>
+                  </motion.div>
                 )}
               </div>
             </motion.div>
           ))}
 
-          {/* Streaming response */}
+          {/* Live tool call blocks (during streaming) */}
+          {isStreaming && streamingTools.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
+                style={{ backgroundColor: agent.color + '33' }}>
+                {agent.emoji}
+              </div>
+              <div className="flex-1 max-w-[80%]">
+                {streamingTools.map((t, i) => <ToolBlock key={i} tool={t} />)}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Streaming text response */}
           {isStreaming && streamingText && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -365,6 +491,9 @@ export default function AgentPanel() {
           </div>
         </div>
       )}
+
+      {/* Workflow link editor */}
+      <WorkflowLinkEditor agentId={agent.id} />
 
       {/* Input area */}
       <div className="px-4 py-3 border-t bg-background flex-shrink-0">

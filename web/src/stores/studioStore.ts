@@ -1,12 +1,54 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { INITIAL_AGENTS, ZONES, ZONE_TASKS, PROJECTS, type Agent, type Zone, type AgentStatus, type Project } from '@/data/studioData'
+import { runAgentInZone } from '@/lib/agentWorker'
+
+export interface ToolEvent {
+  name: string
+  input?: unknown
+  output?: string
+}
 
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: number
-  rawTranscript?: string // original voice before correction
+  rawTranscript?: string  // original voice before correction
+  toolEvents?: ToolEvent[] // real tool_use blocks from Claude
+}
+
+export interface WorkflowLink {
+  fromId: string
+  toId: string
+}
+
+// ─── localStorage guard ────────────────────────────────────────────────────
+// createJSONStorage wraps getItem/setItem/removeItem with JSON serialization.
+// We pass a custom storage object that catches QuotaExceededError silently.
+const safeStorage = createJSONStorage(() => ({
+  getItem: (name: string) => {
+    try { return localStorage.getItem(name) } catch { return null }
+  },
+  setItem: (name: string, value: string) => {
+    try { localStorage.setItem(name, value) } catch (e) {
+      console.warn('[studioStore] localStorage write failed (quota?)', e)
+    }
+  },
+  removeItem: (name: string) => {
+    try { localStorage.removeItem(name) } catch { /* ignore */ }
+  },
+}))
+
+/** Build the initial workflowLinks list from INITIAL_AGENTS.workflowLinks */
+function buildInitialLinks(): WorkflowLink[] {
+  const links: WorkflowLink[] = []
+  for (const agent of INITIAL_AGENTS) {
+    for (const toId of (agent.workflowLinks ?? [])) {
+      links.push({ fromId: agent.id, toId })
+    }
+  }
+  return links
 }
 
 export interface Notification {
@@ -37,6 +79,10 @@ interface StudioState {
   // Provider info (for display)
   providerName: string
   providerIcon: string
+  // User-editable workflow connections (source of truth for WorkflowEdges)
+  workflowLinks: WorkflowLink[]
+  // Demo mode: use fake responses instead of real API calls
+  demoMode: boolean
 
   // Actions
   selectAgent: (id: string | null) => void
@@ -51,9 +97,18 @@ interface StudioState {
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void
   dismissNotification: (id: string) => void
   simulateWork: (agentId: string, zoneId: string) => void
+  /** Orchestrator dispatches a named task to an agent, moving them to a zone */
+  dispatchTask: (fromAgentId: string, toAgentId: string, zoneId: string, taskDescription: string) => void
+  clearChatHistory: (agentId: string) => void
+  /** Workflow link editor actions */
+  addWorkflowLink: (fromId: string, toId: string) => void
+  removeWorkflowLink: (fromId: string, toId: string) => void
+  toggleDemoMode: () => void
 }
 
-export const useStudioStore = create<StudioState>((set, get) => ({
+export const useStudioStore = create<StudioState>()(
+  persist(
+    (set, get) => ({
   agents: INITIAL_AGENTS,
   zones: ZONES,
   projects: PROJECTS,
@@ -65,6 +120,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   sidebarLayout: 'chat-only',
   providerName: 'Mock (Local)',
   providerIcon: '🧪',
+  workflowLinks: buildInitialLinks(),
+  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === 'true',
 
   selectAgent: (id) => set({ selectedAgentId: id, isPanelOpen: !!id }),
   closePanel: () => set({ selectedAgentId: null, isPanelOpen: false }),
@@ -72,7 +129,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setSidebarLayout: (layout) => set({ sidebarLayout: layout }),
 
   moveAgentToZone: (agentId, zoneId) => {
-    const { agents, addNotification, simulateWork } = get()
+    const { agents, addNotification, updateAgentStatus, updateAgentProgress, addMessage } = get()
     const agent = agents.find(a => a.id === agentId)
     const prevZone = agent?.currentZone
     if (!agent || prevZone === zoneId) return
@@ -94,7 +151,69 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         message: `${agent.name} 已进入「${zone.name}」，准备开始工作`,
         type: 'info',
       })
-      setTimeout(() => simulateWork(agentId, zoneId), 1500)
+
+      // Mark start time
+      set(state => ({
+        agents: state.agents.map(a =>
+          a.id === agentId ? { ...a, startTime: Date.now() } : a
+        )
+      }))
+
+      // Trigger real Claude execution after a short arrival delay
+      setTimeout(() => {
+        const current = get().agents.find(a => a.id === agentId)
+        if (!current || current.currentZone !== zoneId) return
+
+        runAgentInZone(agent, zone, {
+          onStatus: (task) => updateAgentStatus(agentId, 'working', task),
+          onProgress: (pct) => updateAgentProgress(agentId, pct),
+          onComplete: (summary) => {
+            const c = get().agents.find(a => a.id === agentId)
+            if (!c || c.currentZone !== zoneId) return
+            updateAgentStatus(agentId, 'reporting', '汇报中...')
+            set(state => ({
+              agents: state.agents.map(a =>
+                a.id === agentId ? { ...a, completedTasks: a.completedTasks + 1 } : a
+              )
+            }))
+            addNotification({
+              agentId,
+              agentName: agent.name,
+              agentEmoji: agent.emoji,
+              message: `✅ ${agent.name}：${summary}`,
+              type: 'success',
+            })
+            // After reporting, return to assigned/idle in zone
+            setTimeout(() => {
+              const c2 = get().agents.find(a => a.id === agentId)
+              if (c2?.currentZone === zoneId) {
+                updateAgentStatus(agentId, 'assigned', '等待下一轮...')
+                set(state => ({ agents: state.agents.map(a => a.id === agentId ? { ...a, progress: undefined } : a) }))
+                // Auto-repeat in cron zone
+                if (zoneId === 'cron') {
+                  setTimeout(() => get().moveAgentToZone(agentId, zoneId), 12000)
+                }
+              }
+            }, 3000)
+          },
+          onError: () => {
+            updateAgentStatus(agentId, 'error', '执行出错')
+            setTimeout(() => {
+              const c = get().agents.find(a => a.id === agentId)
+              if (c?.currentZone === zoneId) updateAgentStatus(agentId, 'assigned', '等待重试...')
+            }, 4000)
+          },
+          onMessage: (role, content, toolEvents) => {
+            addMessage(agentId, {
+              id: Math.random().toString(36).slice(2),
+              role,
+              content,
+              timestamp: Date.now(),
+              toolEvents,
+            })
+          },
+        }, undefined, get().demoMode)
+      }, 1500)
     } else {
       addNotification({
         agentId,
@@ -147,12 +266,17 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   addMessage: (agentId, message) => {
-    set(state => ({
-      chatMessages: {
-        ...state.chatMessages,
-        [agentId]: [...(state.chatMessages[agentId] ?? []), message],
+    set(state => {
+      const prev = state.chatMessages[agentId] ?? []
+      // Keep only the latest 100 messages in-memory (persisted slice is capped to 20)
+      const updated = prev.length >= 100 ? [...prev.slice(-99), message] : [...prev, message]
+      return {
+        chatMessages: {
+          ...state.chatMessages,
+          [agentId]: updated,
+        }
       }
-    }))
+    })
   },
 
   addNotification: (notification) => {
@@ -243,4 +367,92 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }, 3000)
     }, duration)
   },
-}))
+
+  dispatchTask: (fromAgentId, toAgentId, zoneId, taskDescription) => {
+    const { agents, moveAgentToZone, addMessage, addNotification } = get()
+    const from = agents.find(a => a.id === fromAgentId)
+    const to = agents.find(a => a.id === toAgentId)
+    if (!from || !to) return
+
+    // Orchestrator sends an in-chat dispatch message
+    addMessage(fromAgentId, {
+      id: Math.random().toString(36).slice(2),
+      role: 'assistant',
+      content: `📋 已将任务「${taskDescription}」派发给 **${to.name}**（${to.role}），请前往「${ZONES.find(z => z.id === zoneId)?.name ?? zoneId}」区域执行。`,
+      timestamp: Date.now(),
+    })
+
+    // Move target agent and start work
+    addNotification({
+      agentId: fromAgentId,
+      agentName: from.name,
+      agentEmoji: from.emoji,
+      message: `${from.emoji} ${from.name} → ${to.emoji} ${to.name}：${taskDescription}`,
+      type: 'info',
+    })
+
+    setTimeout(() => moveAgentToZone(toAgentId, zoneId), 500)
+
+    // Target agent posts acknowledgement in their own chat
+    setTimeout(() => {
+      addMessage(toAgentId, {
+        id: Math.random().toString(36).slice(2),
+        role: 'assistant',
+        content: `收到 ${from.name} 的任务指派：「${taskDescription}」，正在前往工作区域…`,
+        timestamp: Date.now(),
+      })
+    }, 800)
+  },
+
+  clearChatHistory: (agentId) => {
+    set(state => ({
+      chatMessages: { ...state.chatMessages, [agentId]: [] }
+    }))
+  },
+
+  addWorkflowLink: (fromId, toId) => {
+    set(state => {
+      // Prevent duplicates and self-links
+      if (fromId === toId) return {}
+      const exists = state.workflowLinks.some(l => l.fromId === fromId && l.toId === toId)
+      if (exists) return {}
+      return { workflowLinks: [...state.workflowLinks, { fromId, toId }] }
+    })
+  },
+
+  removeWorkflowLink: (fromId, toId) => {
+    set(state => ({
+      workflowLinks: state.workflowLinks.filter(l => !(l.fromId === fromId && l.toId === toId))
+    }))
+  },
+
+  toggleDemoMode: () => {
+    set(state => ({ demoMode: !state.demoMode }))
+  },
+    }),
+    {
+      name: 'agent-studio-state',
+      storage: safeStorage,
+      // Only persist chat history, zone assignments, pod counts, panel mode, workflow links
+      partialize: (state) => ({
+        // Cap each agent's chat history to the most recent 20 messages to stay within
+        // the ~5 MB localStorage quota even after long conversations.
+        chatMessages: Object.fromEntries(
+          Object.entries(state.chatMessages).map(([id, msgs]) => [id, msgs.slice(-20)])
+        ),
+        panelMode: state.panelMode,
+        sidebarLayout: state.sidebarLayout,
+        demoMode: state.demoMode,
+        workflowLinks: state.workflowLinks,
+        agents: state.agents.map(a => ({
+          ...a,
+          // Reset volatile runtime state on restore
+          status: a.currentZone === 'default' ? 'idle' : a.status,
+          progress: undefined,
+          startTime: undefined,
+          currentTask: a.currentZone === 'default' ? undefined : a.currentTask,
+        })),
+      }),
+    }
+  )
+)
