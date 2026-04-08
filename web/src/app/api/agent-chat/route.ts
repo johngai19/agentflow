@@ -184,9 +184,7 @@ export async function POST(req: NextRequest) {
           if (toolUses.length === 0 || response.stop_reason === 'end_turn') break
 
           // Signal each tool call to the client, execute, return result
-          const toolResults: Anthropic.MessageParam = {
-            role: 'user',
-            content: toolUses.map(block => {
+          const toolResultContent = await Promise.all(toolUses.map(async block => {
               if (block.type !== 'tool_use') return null!
               controller.enqueue(encodeEvent({
                 type: 'tool_start',
@@ -207,7 +205,11 @@ export async function POST(req: NextRequest) {
                 tool_use_id: block.id,
                 content: output,
               }
-            }).filter(Boolean),
+            })).then(r => r.filter(Boolean))
+
+          const toolResults: Anthropic.MessageParam = {
+            role: 'user',
+            content: toolResultContent as Anthropic.ToolResultBlockParam[],
           }
 
           // Add assistant turn + tool results, continue loop
