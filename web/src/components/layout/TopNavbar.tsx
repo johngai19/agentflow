@@ -17,6 +17,9 @@ export function TopNavbar() {
             <Link href="/#typescript" className="text-muted-foreground hover:text-foreground transition-colors">TypeScript</Link>
             <Link href="/#orchestration" className="text-muted-foreground hover:text-foreground transition-colors">Orchestration</Link>
             <Link href="/studio" className="text-muted-foreground hover:text-foreground transition-colors">Studio</Link>
+            <Link href="/orchestrations" className="text-muted-foreground hover:text-foreground transition-colors">编排</Link>
+            <Link href="/agents" className="text-muted-foreground hover:text-foreground transition-colors">Agents</Link>
+            <Link href="/projects" className="text-muted-foreground hover:text-foreground transition-colors">Projects</Link>
             <a
               href="https://github.com/johngai19/nextjskickstart"
               target="_blank"
