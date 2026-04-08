@@ -5,14 +5,12 @@
  * A factory function rebuilds a fresh in-memory store for each test,
  * bypassing the persist middleware singleton.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { createStore } from 'zustand/vanilla'
 import type {
   AuditLogEntry,
   AuditLogStoreState,
   AuditFilter,
-  AuditActionType,
-  AuditResourceType,
   AuditSeverity,
 } from '@/types/audit'
 
