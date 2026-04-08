@@ -17,6 +17,8 @@ import { NodeConfigPanel } from '@/components/workflow/NodeConfigPanel'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
 import { NODE_TYPE_MAP } from '@/components/workflow/nodes/nodeConfig'
 import type { WorkflowNodeType } from '@/types/workflow'
+import { workflowEngineApi, OpsAgentApiError } from '@/lib/opsagentApi'
+import { convertWorkflowToOpsAgent } from '@/lib/workflowConverter'
 
 // ─── Version history panel ────────────────────────────────────────────────────
 
@@ -136,6 +138,10 @@ function WorkflowListSidebar({ onClose }: { onClose: () => void }) {
 
 // ─── Main designer page ────────────────────────────────────────────────────────
 
+// ─── Deploy status ─────────────────────────────────────────────────────────────
+
+type DeployState = 'idle' | 'saving' | 'deploying' | 'success' | 'error'
+
 export default function WorkflowDesignerPage() {
   const workflow = useWorkflowDesignerStore(s => s.getActiveWorkflow())
   const workflows = useWorkflowDesignerStore(s => s.workflows)
@@ -152,6 +158,61 @@ export default function WorkflowDesignerPage() {
   const [showVersions, setShowVersions] = useState(false)
   const [showWorkflowList, setShowWorkflowList] = useState(false)
   const [dragOverlay, setDragOverlay] = useState<WorkflowNodeType | null>(null)
+
+  // ── Save & Deploy state ────────────────────────────────────────────────────
+  const [deployState, setDeployState] = useState<DeployState>('idle')
+  const [deployError, setDeployError] = useState<string | null>(null)
+  const [lastExecutionId, setLastExecutionId] = useState<string | null>(null)
+
+  /**
+   * Save & Deploy — persists the workflow definition to the opsagent
+   * workflow engine and triggers a Temporal execution.
+   *
+   * Steps:
+   *   1. Save local state via the designer store
+   *   2. Snapshot a new version
+   *   3. Register the workflow definition with the engine
+   *   4. Start a new execution (trigger_event = manual)
+   */
+  const handleSaveAndDeploy = useCallback(async () => {
+    if (!workflow) return
+    setDeployState('saving')
+    setDeployError(null)
+    setLastExecutionId(null)
+
+    try {
+      // Step 1: persist local state
+      saveWorkflow()
+      snapshotVersion('Save & Deploy')
+
+      // Step 2: convert agentflow WorkflowDefinition to OpsAgent format
+      setDeployState('deploying')
+      const opsDefinition = convertWorkflowToOpsAgent(workflow)
+
+      // Step 3: register with the workflow engine
+      await workflowEngineApi.registerWorkflow(opsDefinition)
+
+      // Step 4: start execution
+      const result = await workflowEngineApi.startWorkflow({
+        workflow_id: opsDefinition.id,
+        trigger_event: { source: 'agentflow-ui', triggered_by: 'manual' },
+        variables: {},
+      })
+
+      setLastExecutionId(result.execution_id)
+      setDeployState('success')
+
+      // Reset to idle after 4 seconds
+      setTimeout(() => setDeployState('idle'), 4000)
+    } catch (err) {
+      const message = err instanceof OpsAgentApiError
+        ? err.message
+        : (err instanceof Error ? err.message : 'Unknown error')
+      setDeployError(message)
+      setDeployState('error')
+      setTimeout(() => setDeployState('idle'), 6000)
+    }
+  }, [workflow, saveWorkflow, snapshotVersion])
 
   // Load sample workflow on first render if none active
   const activeWorkflowId = useWorkflowDesignerStore(s => s.activeWorkflowId)
@@ -251,6 +312,34 @@ export default function WorkflowDesignerPage() {
             }`}
           >
             {isDirty ? '保存' : '已保存'}
+          </button>
+
+          {/* Save & Deploy */}
+          <button
+            onClick={handleSaveAndDeploy}
+            disabled={!workflow || deployState === 'saving' || deployState === 'deploying'}
+            title={
+              deployState === 'error' && deployError
+                ? `错误：${deployError}`
+                : deployState === 'success' && lastExecutionId
+                ? `执行 ID: ${lastExecutionId}`
+                : '保存工作流定义到后端并触发 Temporal 执行'
+            }
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              deployState === 'saving' || deployState === 'deploying'
+                ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300 cursor-wait'
+                : deployState === 'success'
+                ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                : deployState === 'error'
+                ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+            }`}
+          >
+            {deployState === 'saving'   ? '⏳ 保存中…'  :
+             deployState === 'deploying' ? '🚀 部署中…' :
+             deployState === 'success'   ? '✅ 已部署'   :
+             deployState === 'error'     ? '❌ 失败'     :
+             '🚀 保存并部署'}
           </button>
 
           {/* New workflow */}
