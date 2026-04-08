@@ -20,8 +20,6 @@ function MiniDAGPreview({ template }: { template: WorkflowTemplate }) {
   const W = 280
   const H = 60
   const nodeR = 8
-  const spacing = Math.min(40, (W - nodeR * 2) / Math.max(nodes.length - 1, 1))
-
   // Build a basic x-position per node based on topological depth
   const depthMap = new Map<string, number>()
   const nodeIds = new Set(nodes.map(n => n.id))

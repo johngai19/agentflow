@@ -5,7 +5,7 @@
  * No real timers needed — we use very short delays and allow the engine
  * to run naturally (no vi.useFakeTimers, as we rely on real Promises).
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   runSimulation,
   validateDAG,
