@@ -271,7 +271,6 @@ function makeStore() {
 const AGENT_ID = INITIAL_AGENTS[0].id  // 'max'
 const WORKER_ID = INITIAL_AGENTS[1].id // 'alice'
 const CRON_ZONE = ZONES.find(z => z.id === 'cron')!
-const DEFAULT_ZONE = ZONES.find(z => z.id === 'default')!
 
 describe('studioStore', () => {
   let store: ReturnType<typeof makeStore>

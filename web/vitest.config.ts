@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     setupFiles: [],
     include: ['src/__tests__/**/*.{test,spec}.{ts,tsx}'],
+    passWithNoTests: true,
   },
   resolve: {
     alias: {
