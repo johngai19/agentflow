@@ -339,7 +339,7 @@ function isValidTemporalUrl(value: string) {
   return parsed.protocol === 'http:' || parsed.protocol === 'https:'
 }
 
-export default function SettingsPage(_props: Record<string, never>) {
+export default function SettingsPage() {
   const {
     temporalServerUrl,
     temporalConnectionStatus,
