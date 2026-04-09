@@ -127,7 +127,7 @@ function ToggleRow({
   )
 }
 
-function SettingsPageView({
+export function SettingsPageView({
   temporalServerUrl,
   temporalConnectionStatus,
   temporalConnectionMessage,
