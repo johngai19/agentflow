@@ -127,7 +127,7 @@ function ToggleRow({
   )
 }
 
-export function SettingsPageView({
+function SettingsPageView({
   temporalServerUrl,
   temporalConnectionStatus,
   temporalConnectionMessage,
@@ -339,7 +339,7 @@ function isValidTemporalUrl(value: string) {
   return parsed.protocol === 'http:' || parsed.protocol === 'https:'
 }
 
-export default function SettingsPage() {
+const SettingsPage: React.FC = () => {
   const {
     temporalServerUrl,
     temporalConnectionStatus,
@@ -416,3 +416,5 @@ export default function SettingsPage() {
     />
   )
 }
+
+export default SettingsPage
