@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 export function TopNavbar() {
   return (
@@ -32,6 +33,7 @@ export function TopNavbar() {
             >
               GitHub
             </a>
+            <NotificationCenter />
             <ThemeToggle />
           </nav>
         </div>

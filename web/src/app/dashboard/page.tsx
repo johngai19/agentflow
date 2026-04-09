@@ -2,7 +2,9 @@
 
 // ─── System Health Dashboard ───────────────────────────────────────────────────
 // Top-level overview: active workflows · agent health · metrics · alerts.
+// Real-time updates are received via RealtimeClient (WebSocket).
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { useWorkflowRunStore } from '@/stores/workflowRunStore'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
@@ -15,6 +17,8 @@ import { AlertSummary }       from '@/components/dashboard/AlertSummary'
 import { Card, CardContent }  from '@/components/ui/card'
 import { Button }             from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { getRealtimeClient } from '@/lib/realtimeClient'
+import type { WorkflowStatusEvent, AgentHealthEvent } from '@/lib/realtimeClient'
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -54,12 +58,40 @@ function Section({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const activeRuns   = useWorkflowRunStore(s => s.getActiveRuns())
-  const totalRuns    = useWorkflowRunStore(s => s.runs.length)
-  const wfCount      = useWorkflowDesignerStore(s => s.workflows.length)
-  const agentStats   = useAgentStore(s => s.getStats())
-  const orchRuns     = useOrchestrationStore(s => s.runs)
-  const orchActive   = orchRuns.filter(r => r.status === 'running').length
+  const activeRuns      = useWorkflowRunStore(s => s.getActiveRuns())
+  const totalRuns       = useWorkflowRunStore(s => s.runs.length)
+  const wfCount         = useWorkflowDesignerStore(s => s.workflows.length)
+  const agentStats      = useAgentStore(s => s.getStats())
+  const orchRuns        = useOrchestrationStore(s => s.runs)
+  const orchActive      = orchRuns.filter(r => r.status === 'running').length
+  const updateRunStatus = useWorkflowRunStore(s => s.updateRunStatus)
+
+  // ── Real-time WebSocket integration ────────────────────────────────────────
+  useEffect(() => {
+    const client = getRealtimeClient()
+    client.connect()
+
+    // Sync workflow run status changes into the store
+    const unsubWf = client.on('workflow_status', (ev: WorkflowStatusEvent) => {
+      updateRunStatus(ev.runId, ev.status)
+    })
+
+    // Sync agent health into the agent store
+    const unsubAgent = client.on('agent_health', (ev: AgentHealthEvent) => {
+      useAgentStore.setState(state => ({
+        agents: state.agents.map(a =>
+          a.id === ev.agentId
+            ? { ...a, status: ev.currentStatus, currentTask: ev.currentTask ?? a.currentTask }
+            : a
+        ),
+      }))
+    })
+
+    return () => {
+      unsubWf()
+      unsubAgent()
+    }
+  }, [updateRunStatus])
 
   const now = new Date().toLocaleString('zh-CN', {
     month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
