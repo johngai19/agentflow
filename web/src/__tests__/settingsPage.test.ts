@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { createStore } from 'zustand/vanilla'
 import type { StateStorage } from 'zustand/middleware'
-import { SettingsPageView } from '@/app/settings/page'
+import { SettingsPageView } from '@/components/settings/SettingsPageView'
 import {
   createSettingsStoreConfig,
   SETTINGS_DEFAULTS,
