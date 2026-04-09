@@ -153,7 +153,8 @@ describe('agentRegistryApi', () => {
         ok: true, status: 200, json: () => Promise.resolve(sampleAgent),
       })
       vi.stubGlobal('fetch', fetchSpy)
-      const { registered_at: _r, last_seen: _l, is_healthy: _h, ...agentPayload } = sampleAgent
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { registered_at, last_seen, is_healthy, ...agentPayload } = sampleAgent
       await agentRegistryApi.registerAgent(agentPayload)
       const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit]
       expect(options.method).toBe('POST')
