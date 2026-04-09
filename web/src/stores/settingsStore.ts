@@ -27,6 +27,17 @@ export interface SettingsState {
 
 export const SETTINGS_STORAGE_KEY = 'agentflow-settings'
 
+type PersistedSettingsState = Pick<
+  SettingsState,
+  | 'temporalServerUrl'
+  | 'timeoutSeconds'
+  | 'retryCount'
+  | 'concurrency'
+  | 'soundEnabled'
+  | 'desktopNotificationsEnabled'
+  | 'themePreference'
+>
+
 const DEFAULT_TEMPORAL_SERVER_URL =
   process.env.NEXT_PUBLIC_TEMPORAL_UI_URL ?? 'http://localhost:8080'
 
@@ -47,7 +58,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function createSafeStorage() {
-  return createJSONStorage<SettingsState>(() => ({
+  return createJSONStorage<PersistedSettingsState>(() => ({
     getItem: (name: string) => {
       try {
         if (typeof localStorage === 'undefined') return null
@@ -91,7 +102,7 @@ const buildInitialState = (): Omit<
 })
 
 export function createSettingsStoreConfig(storage?: StateStorage) {
-  return persist<SettingsState>(
+  return persist<SettingsState, [], [], PersistedSettingsState>(
     (set) => ({
       ...buildInitialState(),
       setTemporalServerUrl: (url) =>
@@ -137,7 +148,7 @@ export function createSettingsStoreConfig(storage?: StateStorage) {
     {
       name: SETTINGS_STORAGE_KEY,
       storage: storage ? createJSONStorage(() => storage) : createSafeStorage(),
-      partialize: (state) => ({
+      partialize: (state): PersistedSettingsState => ({
         temporalServerUrl: state.temporalServerUrl,
         timeoutSeconds: state.timeoutSeconds,
         retryCount: state.retryCount,
