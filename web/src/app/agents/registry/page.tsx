@@ -108,7 +108,7 @@ function statusVariant(isHealthy: boolean): 'default' | 'destructive' {
   return isHealthy ? 'default' : 'destructive'
 }
 
-export default function AgentRegistryPage() {
+const AgentRegistryPage: React.FC = () => {
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -389,3 +389,5 @@ export default function AgentRegistryPage() {
     </div>
   )
 }
+
+export default AgentRegistryPage
