@@ -1,13 +1,13 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import AgentRegistryPage, {
+import AgentRegistryView, {
   applyHealthCheckResults,
   buildRegisterPayload,
   formatLastSeen,
   parseTagList,
   slugifyAgentName,
-} from '@/app/agents/registry/page'
+} from '@/components/agents/AgentRegistryView'
 import type { AgentInfo } from '@/lib/opsagentApi'
 
 const sampleAgent: AgentInfo = {
@@ -33,9 +33,9 @@ const sampleAgent: AgentInfo = {
   registered_at: '2026-04-09T12:00:00.000Z',
 }
 
-describe('AgentRegistryPage', () => {
+describe('AgentRegistryView', () => {
   it('renders the registry table and register form sections', () => {
-    const html = renderToStaticMarkup(createElement(AgentRegistryPage))
+    const html = renderToStaticMarkup(createElement(AgentRegistryView))
 
     expect(html).toContain('Agent Registry')
     expect(html).toContain('Registered Agents')
